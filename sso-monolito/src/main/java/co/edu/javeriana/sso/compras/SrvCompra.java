@@ -7,8 +7,8 @@ import co.edu.javeriana.sso.dominio.entidad.EstadoCompra;
 import co.edu.javeriana.sso.dominio.entidad.EstadoOferta;
 import co.edu.javeriana.sso.dominio.entidad.Oferta;
 import co.edu.javeriana.sso.dominio.error.ErrorNegocio;
-import co.edu.javeriana.sso.dominio.integra.IntegraBDCompra;
-import co.edu.javeriana.sso.dominio.integra.IntegraBDOferta;
+import co.edu.javeriana.sso.dominio.repo.RepoCompra;
+import co.edu.javeriana.sso.dominio.repo.RepoOferta;
 import co.edu.javeriana.sso.dominio.mensaje.MsgVerificarOFAC;
 import co.edu.javeriana.sso.notificacion.PublicadorEventos;
 import java.math.BigDecimal;
@@ -22,16 +22,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SrvCompra {
 
-    private final IntegraBDOferta integraBDOferta;
-    private final IntegraBDCompra integraBDCompra;
+    private final RepoOferta repoOferta;
+    private final RepoCompra repoCompra;
     private final PublicadorEventos publicadorEventos;
     private final BigDecimal iva;
     private final int esperaMin;
 
-    public SrvCompra(IntegraBDOferta integraBDOferta, IntegraBDCompra integraBDCompra, PublicadorEventos publicadorEventos,
+    public SrvCompra(RepoOferta repoOferta, RepoCompra repoCompra, PublicadorEventos publicadorEventos,
                      @Value("${sso.impuestos.iva:0.19}") BigDecimal iva, @Value("${sso.ofac.espera-min:5}") int esperaMin) {
-        this.integraBDOferta = integraBDOferta;
-        this.integraBDCompra = integraBDCompra;
+        this.repoOferta = repoOferta;
+        this.repoCompra = repoCompra;
         this.publicadorEventos = publicadorEventos;
         this.iva = iva;
         this.esperaMin = esperaMin;
@@ -42,12 +42,12 @@ public class SrvCompra {
         if (idOferta == null) {
             throw new ErrorNegocio(HttpStatus.BAD_REQUEST, "Falta el número de la oferta");
         }
-        Oferta oferta = integraBDOferta.findById(idOferta)
+        Oferta oferta = repoOferta.findById(idOferta)
                 .orElseThrow(() -> new ErrorNegocio(HttpStatus.NOT_FOUND, "La oferta no existe"));
         if (!oferta.getCliente().getCedula().equals(cedula) || oferta.getEstado() != EstadoOferta.GANADORA) {
             throw new ErrorNegocio(HttpStatus.CONFLICT, "Esta oferta no fue ganada por usted");
         }
-        if (integraBDCompra.existsByOferta(oferta)) {
+        if (repoCompra.existsByOferta(oferta)) {
             throw new ErrorNegocio(HttpStatus.CONFLICT, "Ya inició la compra de este bien");
         }
         BigDecimal total = calcularValorTotal(oferta);
@@ -60,7 +60,7 @@ public class SrvCompra {
         compra.setEstado(EstadoCompra.VERIFICANDO_OFAC);
         compra.setIntentosOFAC(0);
         compra.setProximoIntento(LocalDateTime.now().plusMinutes(esperaMin));
-        integraBDCompra.save(compra);
+        repoCompra.save(compra);
         publicadorEventos.publicarVerificacion(new MsgVerificarOFAC(compra.getNumeroCompra(), cedula));
         return new RespuestaCompraDTO(compra.getNumeroCompra(), compra.getEstado(),
                 "Estamos validando su identidad. Le llegará un SMS cuando pueda pagar.");
@@ -73,7 +73,7 @@ public class SrvCompra {
 
     @Transactional(readOnly = true)
     public CompraDTO consultar(String cedula, Long numeroCompra) {
-        Compra c = integraBDCompra.findByNumeroCompra(numeroCompra)
+        Compra c = repoCompra.findByNumeroCompra(numeroCompra)
                 .filter(x -> x.getCliente().getCedula().equals(cedula))
                 .orElseThrow(() -> new ErrorNegocio(HttpStatus.NOT_FOUND, "La compra no existe"));
         return new CompraDTO(c.getNumeroCompra(), c.getOferta().getSubasta().getBien().getNombre(), c.getValorOferta(),

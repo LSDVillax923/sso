@@ -6,9 +6,9 @@ import co.edu.javeriana.sso.dominio.entidad.EstadoOferta;
 import co.edu.javeriana.sso.dominio.entidad.Oferta;
 import co.edu.javeriana.sso.dominio.entidad.Subasta;
 import co.edu.javeriana.sso.dominio.error.ErrorNegocio;
-import co.edu.javeriana.sso.dominio.integra.IntegraBDCliente;
-import co.edu.javeriana.sso.dominio.integra.IntegraBDOferta;
-import co.edu.javeriana.sso.dominio.integra.IntegraBDSubasta;
+import co.edu.javeriana.sso.dominio.repo.RepoCliente;
+import co.edu.javeriana.sso.dominio.repo.RepoOferta;
+import co.edu.javeriana.sso.dominio.repo.RepoSubasta;
 import co.edu.javeriana.sso.ofertas.ItemOfertaDTO;
 import co.edu.javeriana.sso.ofertas.OfertaDTO;
 import co.edu.javeriana.sso.ofertas.PeticionOfertaDTO;
@@ -30,15 +30,15 @@ public class SrvOferta {
     private static final String MENSAJE_OK =
             "Su oferta fue registrada. Le llegará un mensaje al celular cuando sea posible continuar la compra.";
 
-    private final IntegraBDSubasta integraBDSubasta;
-    private final IntegraBDOferta integraBDOferta;
-    private final IntegraBDCliente integraBDCliente;
+    private final RepoSubasta repoSubasta;
+    private final RepoOferta repoOferta;
+    private final RepoCliente repoCliente;
     private final SrvCarrito srvCarrito;
 
-    public SrvOferta(IntegraBDSubasta integraBDSubasta, IntegraBDOferta integraBDOferta, IntegraBDCliente integraBDCliente, SrvCarrito srvCarrito) {
-        this.integraBDSubasta = integraBDSubasta;
-        this.integraBDOferta = integraBDOferta;
-        this.integraBDCliente = integraBDCliente;
+    public SrvOferta(RepoSubasta repoSubasta, RepoOferta repoOferta, RepoCliente repoCliente, SrvCarrito srvCarrito) {
+        this.repoSubasta = repoSubasta;
+        this.repoOferta = repoOferta;
+        this.repoCliente = repoCliente;
         this.srvCarrito = srvCarrito;
     }
 
@@ -47,12 +47,12 @@ public class SrvOferta {
         if (peticion == null || peticion.items() == null || peticion.items().isEmpty()) {
             throw new ErrorNegocio(HttpStatus.BAD_REQUEST, "La petición no trae bienes para ofertar");
         }
-        Cliente cliente = integraBDCliente.findById(cedula)
+        Cliente cliente = repoCliente.findById(cedula)
                 .orElseThrow(() -> new ErrorNegocio(HttpStatus.FORBIDDEN, "Cliente no registrado"));
         List<Long> aceptadas = new ArrayList<>();
         Map<Long, String> rechazadas = new LinkedHashMap<>();
         for (ItemOfertaDTO item : peticion.items()) {
-            Optional<Subasta> subasta = integraBDSubasta.findById(item.idSubasta());
+            Optional<Subasta> subasta = repoSubasta.findById(item.idSubasta());
             if (subasta.isEmpty()) {
                 rechazadas.put(item.idSubasta(), "La subasta no existe");
                 continue;
@@ -67,7 +67,7 @@ public class SrvOferta {
             oferta.setValor(item.valor());
             oferta.setFechaHora(LocalDateTime.now());
             oferta.setEstado(EstadoOferta.REGISTRADA);
-            integraBDOferta.save(oferta);
+            repoOferta.save(oferta);
             aceptadas.add(item.idSubasta());
         }
         srvCarrito.quitarSubastas(cedula, aceptadas);
@@ -77,7 +77,7 @@ public class SrvOferta {
 
     @Transactional(readOnly = true)
     public List<OfertaDTO> consultarGanadoras(String cedula) {
-        return integraBDOferta.findByClienteCedulaAndEstado(cedula, EstadoOferta.GANADORA).stream()
+        return repoOferta.findByClienteCedulaAndEstado(cedula, EstadoOferta.GANADORA).stream()
                 .map(o -> new OfertaDTO(o.getIdOferta(), o.getSubasta().getIdSubasta(),
                         o.getSubasta().getBien().getNombre(), o.getValor(), o.getEstado()))
                 .toList();

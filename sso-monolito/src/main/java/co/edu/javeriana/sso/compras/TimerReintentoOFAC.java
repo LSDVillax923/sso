@@ -1,7 +1,7 @@
 package co.edu.javeriana.sso.compras;
 
 import co.edu.javeriana.sso.dominio.entidad.EstadoCompra;
-import co.edu.javeriana.sso.dominio.integra.IntegraBDCompra;
+import co.edu.javeriana.sso.dominio.repo.RepoCompra;
 import co.edu.javeriana.sso.dominio.mensaje.MsgVerificarOFAC;
 import co.edu.javeriana.sso.notificacion.PublicadorEventos;
 import java.time.LocalDateTime;
@@ -13,18 +13,18 @@ import org.springframework.stereotype.Component;
 @Component
 public class TimerReintentoOFAC {
 
-    private final IntegraBDCompra integraBDCompra;
+    private final RepoCompra repoCompra;
     private final PublicadorEventos publicadorEventos;
 
-    public TimerReintentoOFAC(IntegraBDCompra integraBDCompra, PublicadorEventos publicadorEventos) {
-        this.integraBDCompra = integraBDCompra;
+    public TimerReintentoOFAC(RepoCompra repoCompra, PublicadorEventos publicadorEventos) {
+        this.repoCompra = repoCompra;
         this.publicadorEventos = publicadorEventos;
     }
 
     @Scheduled(fixedDelayString = "${sso.ofac.revision-ms:300000}", initialDelay = 60000)
     @SchedulerLock(name = "TimerReintentoOFAC", lockAtMostFor = "PT4M")
     public void ejecutar() {
-        integraBDCompra.findByEstadoAndProximoIntentoBefore(EstadoCompra.VERIFICANDO_OFAC, LocalDateTime.now())
+        repoCompra.findByEstadoAndProximoIntentoBefore(EstadoCompra.VERIFICANDO_OFAC, LocalDateTime.now())
                 .forEach(c -> publicadorEventos.publicarVerificacion(
                         new MsgVerificarOFAC(c.getNumeroCompra(), c.getCliente().getCedula())));
     }

@@ -7,7 +7,7 @@ import co.edu.javeriana.sso.dominio.entidad.Cliente;
 import co.edu.javeriana.sso.dominio.entidad.Compra;
 import co.edu.javeriana.sso.dominio.entidad.EstadoCompra;
 import co.edu.javeriana.sso.dominio.entidad.SistemaDestino;
-import co.edu.javeriana.sso.dominio.integra.IntegraBDCompra;
+import co.edu.javeriana.sso.dominio.repo.RepoCompra;
 import co.edu.javeriana.sso.dominio.mensaje.MsgEnvioSEN;
 import co.edu.javeriana.sso.dominio.mensaje.MsgVentaSIN;
 import java.time.LocalDateTime;
@@ -20,12 +20,12 @@ public class SrvDistribuirCompra {
 
     private final IntegraSIN integraSIN;
     private final IntegraSEN integraSEN;
-    private final IntegraBDCompra integraBDCompra;
+    private final RepoCompra repoCompra;
 
-    public SrvDistribuirCompra(IntegraSIN integraSIN, IntegraSEN integraSEN, IntegraBDCompra integraBDCompra) {
+    public SrvDistribuirCompra(IntegraSIN integraSIN, IntegraSEN integraSEN, RepoCompra repoCompra) {
         this.integraSIN = integraSIN;
         this.integraSEN = integraSEN;
-        this.integraBDCompra = integraBDCompra;
+        this.repoCompra = repoCompra;
     }
 
     @Transactional
@@ -33,7 +33,7 @@ public class SrvDistribuirCompra {
         integraSIN.enviarVenta(ventaDe(compra));
         integraSEN.enviarEnvio(envioDe(compra));
         compra.setEstado(EstadoCompra.DISTRIBUIDA);
-        integraBDCompra.save(compra);
+        repoCompra.save(compra);
     }
 
     public void reenviar(Compra compra, SistemaDestino sistema) {

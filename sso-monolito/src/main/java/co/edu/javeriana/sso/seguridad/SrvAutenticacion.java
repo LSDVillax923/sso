@@ -2,7 +2,7 @@ package co.edu.javeriana.sso.seguridad;
 
 import co.edu.javeriana.sso.dominio.entidad.Cliente;
 import co.edu.javeriana.sso.dominio.error.ErrorNegocio;
-import co.edu.javeriana.sso.dominio.integra.IntegraBDCliente;
+import co.edu.javeriana.sso.dominio.repo.RepoCliente;
 import co.edu.javeriana.sso.seguridad.IntegraAD;
 import co.edu.javeriana.sso.seguridad.LoginDTO;
 import co.edu.javeriana.sso.seguridad.TokenDTO;
@@ -14,12 +14,12 @@ import org.springframework.stereotype.Service;
 public class SrvAutenticacion {
 
     private final IntegraAD integraAD;
-    private final IntegraBDCliente integraBDCliente;
+    private final RepoCliente repoCliente;
     private final UtilJWT utilJWT;
 
-    public SrvAutenticacion(IntegraAD integraAD, IntegraBDCliente integraBDCliente, UtilJWT utilJWT) {
+    public SrvAutenticacion(IntegraAD integraAD, RepoCliente repoCliente, UtilJWT utilJWT) {
         this.integraAD = integraAD;
-        this.integraBDCliente = integraBDCliente;
+        this.repoCliente = repoCliente;
         this.utilJWT = utilJWT;
     }
 
@@ -28,7 +28,7 @@ public class SrvAutenticacion {
                 || !integraAD.validarCredenciales(dto.usuario(), dto.clave())) {
             throw new ErrorNegocio(HttpStatus.UNAUTHORIZED, "Usuario o clave incorrectos");
         }
-        Cliente cliente = integraBDCliente.findByUsuarioAD(dto.usuario())
+        Cliente cliente = repoCliente.findByUsuarioAD(dto.usuario())
                 .orElseThrow(() -> new ErrorNegocio(HttpStatus.FORBIDDEN, "El usuario no está registrado como cliente de SSO"));
         return new TokenDTO(utilJWT.generarToken(cliente), cliente.getCedula(), cliente.getNombre());
     }
