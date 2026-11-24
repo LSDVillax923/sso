@@ -4,8 +4,8 @@ import co.edu.javeriana.sso.distribucion.SrvDistribuirCompra;
 import co.edu.javeriana.sso.dominio.entidad.Compra;
 import co.edu.javeriana.sso.dominio.entidad.EstadoCompra;
 import co.edu.javeriana.sso.dominio.entidad.Pago;
-import co.edu.javeriana.sso.dominio.integra.IntegraBDCompra;
-import co.edu.javeriana.sso.dominio.integra.IntegraBDPago;
+import co.edu.javeriana.sso.dominio.repo.RepoCompra;
+import co.edu.javeriana.sso.dominio.repo.RepoPago;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import org.slf4j.Logger;
@@ -20,17 +20,17 @@ public class SrvVerificarPago {
 
     private static final Logger log = LoggerFactory.getLogger(SrvVerificarPago.class);
 
-    private final IntegraBDCompra integraBDCompra;
-    private final IntegraBDPago integraBDPago;
+    private final RepoCompra repoCompra;
+    private final RepoPago repoPago;
     private final PublicadorPagos publicadorPagos;
     private final SrvDistribuirCompra srvDistribuirCompra;
     private final int esperaMin;
 
-    public SrvVerificarPago(IntegraBDCompra integraBDCompra, IntegraBDPago integraBDPago, PublicadorPagos publicadorPagos,
+    public SrvVerificarPago(RepoCompra repoCompra, RepoPago repoPago, PublicadorPagos publicadorPagos,
                             SrvDistribuirCompra srvDistribuirCompra,
                             @Value("${sso.pagos.espera-min:10}") int esperaMin) {
-        this.integraBDCompra = integraBDCompra;
-        this.integraBDPago = integraBDPago;
+        this.repoCompra = repoCompra;
+        this.repoPago = repoPago;
         this.publicadorPagos = publicadorPagos;
         this.srvDistribuirCompra = srvDistribuirCompra;
         this.esperaMin = esperaMin;
@@ -45,12 +45,12 @@ public class SrvVerificarPago {
     @Transactional(readOnly = true)
     public void verificarPendientes() {
         LocalDateTime limite = LocalDateTime.now().minusMinutes(esperaMin);
-        integraBDCompra.findByEstadoAndFechaActualizacionBefore(EstadoCompra.PENDIENTE_PAGO, limite)
+        repoCompra.findByEstadoAndFechaActualizacionBefore(EstadoCompra.PENDIENTE_PAGO, limite)
                 .forEach(c -> publicadorPagos.publicarConsulta(c.getNumeroCompra()));
     }
 
     private void registrarPago(ConfirmacionPagoDTO dto, String origen) {
-        Compra compra = integraBDCompra.bloquear(dto.numeroCompra()).orElse(null);
+        Compra compra = repoCompra.bloquear(dto.numeroCompra()).orElse(null);
         if (compra == null) {
             log.warn("La compra {} no existe para la cédula {}", dto.numeroCompra(), dto.cedula());
             return;
@@ -72,9 +72,9 @@ public class SrvVerificarPago {
         pago.setValorPagado(dto.valorPagado());
         pago.setFechaPago(LocalDateTime.now());
         pago.setOrigen(origen);
-        integraBDPago.save(pago);
+        repoPago.save(pago);
         compra.setEstado(EstadoCompra.PAGADA);
-        integraBDCompra.save(compra);
+        repoCompra.save(compra);
         srvDistribuirCompra.distribuir(compra);
     }
 

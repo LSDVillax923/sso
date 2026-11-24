@@ -6,9 +6,9 @@ import co.edu.javeriana.sso.dominio.entidad.Cliente;
 import co.edu.javeriana.sso.dominio.entidad.ItemCarrito;
 import co.edu.javeriana.sso.dominio.entidad.Subasta;
 import co.edu.javeriana.sso.dominio.error.ErrorNegocio;
-import co.edu.javeriana.sso.dominio.integra.IntegraBDCarrito;
-import co.edu.javeriana.sso.dominio.integra.IntegraBDCliente;
-import co.edu.javeriana.sso.dominio.integra.IntegraBDSubasta;
+import co.edu.javeriana.sso.dominio.repo.RepoCarrito;
+import co.edu.javeriana.sso.dominio.repo.RepoCliente;
+import co.edu.javeriana.sso.dominio.repo.RepoSubasta;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -18,24 +18,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SrvCarrito {
 
-    private final IntegraBDCarrito integraBDCarrito;
-    private final IntegraBDSubasta integraBDSubasta;
-    private final IntegraBDCliente integraBDCliente;
+    private final RepoCarrito repoCarrito;
+    private final RepoSubasta repoSubasta;
+    private final RepoCliente repoCliente;
 
-    public SrvCarrito(IntegraBDCarrito integraBDCarrito, IntegraBDSubasta integraBDSubasta, IntegraBDCliente integraBDCliente) {
-        this.integraBDCarrito = integraBDCarrito;
-        this.integraBDSubasta = integraBDSubasta;
-        this.integraBDCliente = integraBDCliente;
+    public SrvCarrito(RepoCarrito repoCarrito, RepoSubasta repoSubasta, RepoCliente repoCliente) {
+        this.repoCarrito = repoCarrito;
+        this.repoSubasta = repoSubasta;
+        this.repoCliente = repoCliente;
     }
 
     @Transactional
     public void agregarItem(String cedula, Long idSubasta) {
-        Subasta subasta = integraBDSubasta.findById(idSubasta)
+        Subasta subasta = repoSubasta.findById(idSubasta)
                 .orElseThrow(() -> new ErrorNegocio(HttpStatus.NOT_FOUND, "La subasta no existe"));
         if (!subasta.estaAbierta(LocalDateTime.now())) {
             throw new ErrorNegocio(HttpStatus.CONFLICT, "La subasta no está abierta");
         }
-        CarritoSubasta carrito = integraBDCarrito.findByClienteCedula(cedula).orElseGet(() -> nuevoCarrito(cedula));
+        CarritoSubasta carrito = repoCarrito.findByClienteCedula(cedula).orElseGet(() -> nuevoCarrito(cedula));
         boolean repetido = carrito.getItems().stream().anyMatch(i -> i.getSubasta().getIdSubasta().equals(idSubasta));
         if (repetido) {
             throw new ErrorNegocio(HttpStatus.CONFLICT, "El bien ya está en el carrito");
@@ -44,12 +44,12 @@ public class SrvCarrito {
         item.setSubasta(subasta);
         item.setFechaAgregado(LocalDateTime.now());
         carrito.agregar(item);
-        integraBDCarrito.save(carrito);
+        repoCarrito.save(carrito);
     }
 
     @Transactional(readOnly = true)
     public List<ItemCarritoDTO> listar(String cedula) {
-        return integraBDCarrito.findByClienteCedula(cedula)
+        return repoCarrito.findByClienteCedula(cedula)
                 .map(c -> c.getItems().stream()
                         .map(i -> new ItemCarritoDTO(i.getIdItem(), i.getSubasta().getIdSubasta(),
                                 i.getSubasta().getBien().getNombre(), i.getSubasta().getBien().getValorMinimo(),
@@ -60,17 +60,17 @@ public class SrvCarrito {
 
     @Transactional
     public void quitar(String cedula, Long idItem) {
-        integraBDCarrito.findByClienteCedula(cedula).ifPresent(c -> c.getItems().removeIf(i -> i.getIdItem().equals(idItem)));
+        repoCarrito.findByClienteCedula(cedula).ifPresent(c -> c.getItems().removeIf(i -> i.getIdItem().equals(idItem)));
     }
 
     @Transactional
     public void quitarSubastas(String cedula, List<Long> idsSubasta) {
-        integraBDCarrito.findByClienteCedula(cedula)
+        repoCarrito.findByClienteCedula(cedula)
                 .ifPresent(c -> c.getItems().removeIf(i -> idsSubasta.contains(i.getSubasta().getIdSubasta())));
     }
 
     private CarritoSubasta nuevoCarrito(String cedula) {
-        Cliente cliente = integraBDCliente.findById(cedula)
+        Cliente cliente = repoCliente.findById(cedula)
                 .orElseThrow(() -> new ErrorNegocio(HttpStatus.FORBIDDEN, "Cliente no registrado"));
         CarritoSubasta carrito = new CarritoSubasta();
         carrito.setCliente(cliente);

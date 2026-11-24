@@ -1,8 +1,9 @@
 package co.edu.javeriana.sen.srb;
 
 import co.edu.javeriana.sen.dto.DTOEnvioSEN;
+import co.edu.javeriana.sen.entidad.Envio;
 import co.edu.javeriana.sen.integra.IntegraAckSEN;
-import co.edu.javeriana.sen.integra.IntegraBDEnvios;
+import co.edu.javeriana.sen.repo.RepoEnvio;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import org.springframework.stereotype.Service;
@@ -12,19 +13,19 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SRBProgramarEnvio {
 
-    private final IntegraBDEnvios integraBDEnvios;
+    private final RepoEnvio repoEnvio;
     private final IntegraAckSEN integraAckSEN;
 
-    public SRBProgramarEnvio(IntegraBDEnvios integraBDEnvios, IntegraAckSEN integraAckSEN) {
-        this.integraBDEnvios = integraBDEnvios;
+    public SRBProgramarEnvio(RepoEnvio repoEnvio, IntegraAckSEN integraAckSEN) {
+        this.repoEnvio = repoEnvio;
         this.integraAckSEN = integraAckSEN;
     }
 
     /** Almacena la información que llega y programa el envío a la dirección registrada del cliente. */
     @Transactional
     public void almacenarEnvio(DTOEnvioSEN dto) {
-        if (!integraBDEnvios.envioRegistrado(dto.numeroCompra())) {
-            integraBDEnvios.registrarEnvio(dto, programarFecha());
+        if (!repoEnvio.existsByNumeroCompra(dto.numeroCompra())) {
+            registrarEnvio(dto, programarFecha());
         }
         integraAckSEN.enviarAck(dto.numeroCompra());
     }
@@ -40,5 +41,19 @@ public class SRBProgramarEnvio {
             }
         }
         return fecha;
+    }
+
+    private void registrarEnvio(DTOEnvioSEN dto, LocalDate fechaProgramada) {
+        Envio envio = new Envio();
+        envio.setNumeroCompra(dto.numeroCompra());
+        envio.setIdBien(dto.idBien());
+        envio.setDescripcion(dto.descripcion());
+        envio.setCedula(dto.cedula());
+        envio.setDestinatario(dto.nombre());
+        envio.setDireccion(dto.direccion());
+        envio.setCelular(dto.celular());
+        envio.setFechaProgramada(fechaProgramada);
+        envio.setEstado("PROGRAMADO");
+        repoEnvio.save(envio);
     }
 }

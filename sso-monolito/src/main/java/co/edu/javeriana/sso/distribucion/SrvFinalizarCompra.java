@@ -4,8 +4,8 @@ import co.edu.javeriana.sso.dominio.entidad.AckCompra;
 import co.edu.javeriana.sso.dominio.entidad.Compra;
 import co.edu.javeriana.sso.dominio.entidad.EstadoCompra;
 import co.edu.javeriana.sso.dominio.entidad.SistemaDestino;
-import co.edu.javeriana.sso.dominio.integra.IntegraBDAckCompra;
-import co.edu.javeriana.sso.dominio.integra.IntegraBDCompra;
+import co.edu.javeriana.sso.dominio.repo.RepoAckCompra;
+import co.edu.javeriana.sso.dominio.repo.RepoCompra;
 import co.edu.javeriana.sso.dominio.mensaje.MsgAck;
 import co.edu.javeriana.sso.dominio.mensaje.MsgNotificacion;
 import co.edu.javeriana.sso.dominio.mensaje.PlantillaMensaje;
@@ -20,16 +20,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SrvFinalizarCompra {
 
-    private final IntegraBDAckCompra integraBDAckCompra;
-    private final IntegraBDCompra integraBDCompra;
+    private final RepoAckCompra repoAckCompra;
+    private final RepoCompra repoCompra;
     private final SrvDistribuirCompra srvDistribuirCompra;
     private final PublicadorEventos publicadorEventos;
     private final int esperaMin;
 
-    public SrvFinalizarCompra(IntegraBDAckCompra integraBDAckCompra, IntegraBDCompra integraBDCompra, SrvDistribuirCompra srvDistribuirCompra,
+    public SrvFinalizarCompra(RepoAckCompra repoAckCompra, RepoCompra repoCompra, SrvDistribuirCompra srvDistribuirCompra,
                               PublicadorEventos publicadorEventos, @Value("${sso.ack.espera-min:10}") int esperaMin) {
-        this.integraBDAckCompra = integraBDAckCompra;
-        this.integraBDCompra = integraBDCompra;
+        this.repoAckCompra = repoAckCompra;
+        this.repoCompra = repoCompra;
         this.srvDistribuirCompra = srvDistribuirCompra;
         this.publicadorEventos = publicadorEventos;
         this.esperaMin = esperaMin;
@@ -37,16 +37,16 @@ public class SrvFinalizarCompra {
 
     @Transactional
     public void registrarAck(MsgAck ack) {
-        Compra compra = integraBDCompra.bloquear(ack.numeroCompra()).orElse(null);
+        Compra compra = repoCompra.bloquear(ack.numeroCompra()).orElse(null);
         if (compra == null || ack.sistema() == null) {
             return;
         }
-        if (!integraBDAckCompra.existsByCompraAndSistema(compra, ack.sistema())) {
+        if (!repoAckCompra.existsByCompraAndSistema(compra, ack.sistema())) {
             AckCompra nuevo = new AckCompra();
             nuevo.setCompra(compra);
             nuevo.setSistema(ack.sistema());
             nuevo.setFechaRecibido(LocalDateTime.now());
-            integraBDAckCompra.save(nuevo);
+            repoAckCompra.save(nuevo);
         }
         finalizarSiCompleta(compra);
     }
@@ -54,28 +54,28 @@ public class SrvFinalizarCompra {
     @Transactional
     public void revisarAckPendientes() {
         LocalDateTime limite = LocalDateTime.now().minusMinutes(esperaMin);
-        for (Compra compra : integraBDCompra.findByEstadoAndFechaActualizacionBefore(EstadoCompra.DISTRIBUIDA, limite)) {
-            if (integraBDAckCompra.countByCompra(compra) >= SistemaDestino.values().length) {
+        for (Compra compra : repoCompra.findByEstadoAndFechaActualizacionBefore(EstadoCompra.DISTRIBUIDA, limite)) {
+            if (repoAckCompra.countByCompra(compra) >= SistemaDestino.values().length) {
                 finalizarSiCompleta(compra);
                 continue;
             }
             for (SistemaDestino sistema : SistemaDestino.values()) {
-                if (!integraBDAckCompra.existsByCompraAndSistema(compra, sistema)) {
+                if (!repoAckCompra.existsByCompraAndSistema(compra, sistema)) {
                     srvDistribuirCompra.reenviar(compra, sistema);
                 }
             }
             compra.setFechaActualizacion(LocalDateTime.now());
-            integraBDCompra.save(compra);
+            repoCompra.save(compra);
         }
     }
 
     private void finalizarSiCompleta(Compra compra) {
         if (compra.getEstado() != EstadoCompra.DISTRIBUIDA
-                || integraBDAckCompra.countByCompra(compra) < SistemaDestino.values().length) {
+                || repoAckCompra.countByCompra(compra) < SistemaDestino.values().length) {
             return;
         }
         compra.setEstado(EstadoCompra.TERMINADA);
-        integraBDCompra.save(compra);
+        repoCompra.save(compra);
         publicadorEventos.publicarNotificacion(MsgNotificacion.sms(compra.getCliente().getCelular(),
                 PlantillaMensaje.COMPRA_TERMINADA, Map.of("numeroCompra", String.valueOf(compra.getNumeroCompra()))));
     }
