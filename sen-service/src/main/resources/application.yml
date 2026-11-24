@@ -1,0 +1,33 @@
+# PC2 · 192.168.1.102
+server:
+  port: 8093
+
+spring:
+  application:
+    name: sen-service
+  datasource:
+    url: ${BD_SEN_URL:jdbc:postgresql://192.168.1.102:5432/bd_sen}
+    username: ${BD_SEN_USER:sen}
+    password: ${BD_SEN_PASS:sen}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  rabbitmq:
+    host: ${RABBIT_HOST:192.168.1.102}
+    port: 5672
+    username: ${RABBIT_USER:sso}
+    password: ${RABBIT_PASS:sso}
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 2s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

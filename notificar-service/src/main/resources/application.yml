@@ -1,0 +1,49 @@
+# PC2 · 192.168.1.102
+server:
+  port: 8094
+
+spring:
+  application:
+    name: notificar-service
+  datasource:
+    url: ${BD_NOTIF_URL:jdbc:postgresql://192.168.1.102:5432/bd_notificaciones}
+    username: ${BD_NOTIF_USER:notif}
+    password: ${BD_NOTIF_PASS:notif}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  rabbitmq:
+    host: ${RABBIT_HOST:192.168.1.102}
+    port: 5672
+    username: ${RABBIT_USER:sso}
+    password: ${RABBIT_PASS:sso}
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 2s
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASS:}
+    properties:
+      "[mail.smtp.auth]": true
+      "[mail.smtp.starttls.enable]": true
+
+notificar:
+  correo:
+    simulado: ${CORREO_SIMULADO:true}
+    remitente: ${SMTP_USER:no-responder@sso.local}
+  sms:
+    url-gateway: ${SMS_URL:}
+    api-key: ${SMS_API_KEY:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

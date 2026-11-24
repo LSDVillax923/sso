@@ -1,0 +1,13 @@
+@model ComprobanteVM
+@{
+    ViewData["Title"] = "Comprobante";
+}
+<h1>Pago registrado</h1>
+<div class="tarjeta">
+    <p>Comprobante <b>@Model.IdPago</b></p>
+    <p>Compra SSO <b>@Model.NumeroCompra</b></p>
+    <p>Valor pagado <b>$ @Model.ValorPagado.ToString("N2")</b></p>
+    <p>Fecha @Model.Fecha.ToString("yyyy-MM-dd HH:mm")</p>
+</div>
+<p>SSO recibirá el aviso y le confirmará la compra por SMS.</p>
+<p><a href="/compras">Volver a mis compras</a></p>

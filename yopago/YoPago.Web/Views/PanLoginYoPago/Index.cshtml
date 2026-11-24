@@ -1,0 +1,16 @@
+@model LoginVM
+@{
+    ViewData["Title"] = "Ingresar";
+}
+<h1>Pague sus compras SSO</h1>
+<p>Ingrese con su cédula y su contraseña de YoPago.</p>
+@if (ViewBag.Error != null)
+{
+    <p class="error">@ViewBag.Error</p>
+}
+<form method="post" action="/ingresar" class="tarjeta">
+    @Html.AntiForgeryToken()
+    <label>Cédula <input name="Cedula" value="@Model.Cedula" required /></label>
+    <label>Contraseña <input name="Contrasena" type="password" required /></label>
+    <button type="submit">Ingresar</button>
+</form>

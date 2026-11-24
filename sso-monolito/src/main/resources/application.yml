@@ -1,0 +1,70 @@
+# PC2 · 192.168.1.102 · réplica 1 con java -jar en :8080, réplica 2 en Docker publicada en :8081
+server:
+  port: 8080
+
+spring:
+  application:
+    name: sso-monolito
+  datasource:
+    url: ${BD_SSO_URL:jdbc:postgresql://192.168.1.102:5432/bd_sso}
+    username: ${BD_SSO_USER:sso}
+    password: ${BD_SSO_PASS:sso}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  sql:
+    init:
+      mode: always
+  rabbitmq:
+    host: ${RABBIT_HOST:192.168.1.102}
+    port: 5672
+    username: ${RABBIT_USER:sso}
+    password: ${RABBIT_PASS:sso}
+    listener:
+      simple:
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 2s
+  ldap:
+    # Para LDAPS use ldaps://192.168.1.102:636 e importe el certificado del AD en el truststore de Java
+    urls: ${AD_URL:ldap://192.168.1.102:389}
+    base: dc=sso,dc=local
+    username: ${AD_ADMIN:cn=admin,dc=sso,dc=local}
+    password: ${AD_PASS:admin}
+
+sso:
+  # nombre de esta réplica; la réplica 2 en Docker arranca con REPLICA=sso-monolito-2
+  replica: ${REPLICA:sso-monolito-1}
+  jwt:
+    secreto: ${JWT_SECRETO:cambie-este-secreto-compartido-de-32-caracteres-o-mas}
+    expiracion-min: 60
+  ad:
+    habilitado: ${AD_HABILITADO:true}
+    base-usuarios: ou=clientes
+  url-front: ${URL_FRONT:https://192.168.1.101:8443}
+  impuestos:
+    iva: 0.19
+  http:
+    timeout-ms: 5000
+  ofac:
+    url: ${OFAC_URL:http://192.168.1.101:8091/api/ofac/clientes/}
+    max-intentos: 6
+    espera-min: 5
+    revision-ms: 300000
+  yopago:
+    url-pago: ${YOPAGO_URL_PAGO:http://192.168.1.102:5001}
+  pagos:
+    espera-min: 10
+    revision-ms: 600000
+  ack:
+    espera-min: 10
+    revision-ms: 600000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

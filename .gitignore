@@ -1,0 +1,8 @@
+target/
+bin/
+obj/
+.vs/
+.idea/
+*.iml
+*.p12
+*.user
