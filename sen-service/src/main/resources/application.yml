@@ -1,4 +1,4 @@
-# PC2 · 192.168.1.102
+# PC2 · 192.168.1.102 · contenedor Docker propio (nodo SEN) con bd_sen en su propio contenedor
 server:
   port: 8093
 
@@ -6,7 +6,7 @@ spring:
   application:
     name: sen-service
   datasource:
-    url: ${BD_SEN_URL:jdbc:postgresql://192.168.1.102:5432/bd_sen}
+    url: ${BD_SEN_URL:jdbc:postgresql://192.168.1.102:5435/bd_sen}
     username: ${BD_SEN_USER:sen}
     password: ${BD_SEN_PASS:sen}
   jpa:
