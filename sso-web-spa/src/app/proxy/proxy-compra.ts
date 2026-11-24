@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { CompraDTO, PeticionCompraDTO, RespuestaCompraDTO } from '../dto';
 
-/** Llama a WSCompra por RutasGateway, BalanceadorSSO y APIRestSSO (HTTPS 8443). */
+/** Llama a WSCompra por NGINX (PC1:80) y APIRestSSO. */
 @Injectable({ providedIn: 'root' })
 export class ProxyCompra {
 

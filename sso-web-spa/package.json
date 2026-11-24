@@ -2,11 +2,10 @@
   "name": "sso-web-spa",
   "version": "1.0.0",
   "private": true,
-  "description": "SSOWebSPA: pantallas Angular del SSO. Se sirve desde sso-web (PC1) y se ejecuta en el navegador del cliente.",
+  "description": "SSOWebSPA: pantallas Angular del SSO. Lo sirve NGINX (PC1) y se ejecuta en el navegador del cliente.",
   "scripts": {
     "start": "ng serve --proxy-config proxy.conf.json",
-    "build": "ng build",
-    "build:sso-web": "ng build && node copiar-a-sso-web.mjs"
+    "build": "ng build"
   },
   "dependencies": {
     "@angular/common": "^17.3.0",

@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { OfertaDTO, PeticionOfertaDTO, RespuestaOfertaDTO } from '../dto';
 
-/** Llama a WSOferta por RutasGateway, BalanceadorSSO y APIRestSSO (HTTPS 8443). */
+/** Llama a WSOferta por NGINX (PC1:80) y APIRestSSO. */
 @Injectable({ providedIn: 'root' })
 export class ProxyOferta {
 

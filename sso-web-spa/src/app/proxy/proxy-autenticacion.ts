@@ -6,7 +6,7 @@ import { LoginDTO, TokenDTO } from '../dto';
 export const CLAVE_TOKEN = 'sso.token';
 export const CLAVE_NOMBRE = 'sso.nombre';
 
-/** Llama a WSAutenticacion por RutasGateway, BalanceadorSSO y APIRestSSO (HTTPS 8443) y guarda el JWT de la sesión. */
+/** Llama a WSAutenticacion por NGINX (PC1:80) y APIRestSSO y guarda el JWT de la sesión. */
 @Injectable({ providedIn: 'root' })
 export class ProxyAutenticacion {
 

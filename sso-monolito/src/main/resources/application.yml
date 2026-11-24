@@ -44,7 +44,7 @@ sso:
   ad:
     habilitado: ${AD_HABILITADO:true}
     base-usuarios: ou=clientes
-  url-front: ${URL_FRONT:https://192.168.1.101:8443}
+  url-front: ${URL_FRONT:http://192.168.1.101}
   impuestos:
     iva: 0.19
   http:

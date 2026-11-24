@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
- * Boundary de entrada del monolito: toda petición HTTP que manda el BalanceadorSSO pasa primero por aquí,
+ * Boundary de entrada del monolito: toda petición HTTP que reenvía NGINX pasa primero por aquí,
  * se marca con la réplica que la atiende (cabecera X-Atendido-Por) y sigue hacia el WS, que es un controlador.
  */
 @Component
