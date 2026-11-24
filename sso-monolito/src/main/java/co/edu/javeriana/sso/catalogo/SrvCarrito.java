@@ -64,8 +64,9 @@ public class SrvCarrito {
     }
 
     @Transactional
-    public void vaciar(String cedula) {
-        integraBDCarrito.findByClienteCedula(cedula).ifPresent(CarritoSubasta::vaciar);
+    public void quitarSubastas(String cedula, List<Long> idsSubasta) {
+        integraBDCarrito.findByClienteCedula(cedula)
+                .ifPresent(c -> c.getItems().removeIf(i -> idsSubasta.contains(i.getSubasta().getIdSubasta())));
     }
 
     private CarritoSubasta nuevoCarrito(String cedula) {

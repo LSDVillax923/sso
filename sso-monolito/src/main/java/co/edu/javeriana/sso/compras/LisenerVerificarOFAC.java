@@ -11,13 +11,16 @@ import org.springframework.stereotype.Component;
 public class LisenerVerificarOFAC {
 
     private final SrvVerificarOFAC srvVerificarOFAC;
+    private final IntegraOFAC integraOFAC;
 
-    public LisenerVerificarOFAC(SrvVerificarOFAC srvVerificarOFAC) {
+    public LisenerVerificarOFAC(SrvVerificarOFAC srvVerificarOFAC, IntegraOFAC integraOFAC) {
         this.srvVerificarOFAC = srvVerificarOFAC;
+        this.integraOFAC = integraOFAC;
     }
 
     @RabbitListener(queues = Colas.COMPRAS_OFAC)
     public void recibir(MsgVerificarOFAC mensaje) {
-        srvVerificarOFAC.verificar(mensaje);
+        RespuestaOFACDTO respuesta = integraOFAC.consultar(mensaje.cedula());
+        srvVerificarOFAC.verificar(mensaje.numeroCompra(), respuesta);
     }
 }

@@ -4,17 +4,13 @@ import co.edu.javeriana.sso.distribucion.SrvDistribuirCompra;
 import co.edu.javeriana.sso.dominio.entidad.Compra;
 import co.edu.javeriana.sso.dominio.entidad.EstadoCompra;
 import co.edu.javeriana.sso.dominio.entidad.Pago;
-import co.edu.javeriana.sso.dominio.error.ErrorNegocio;
 import co.edu.javeriana.sso.dominio.integra.IntegraBDCompra;
 import co.edu.javeriana.sso.dominio.integra.IntegraBDPago;
-import co.edu.javeriana.sso.dominio.mensaje.MsgNotificacion;
-import co.edu.javeriana.sso.dominio.mensaje.PlantillaMensaje;
-import co.edu.javeriana.sso.notificacion.PublicadorEventos;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,21 +18,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SrvVerificarPago {
 
+    private static final Logger log = LoggerFactory.getLogger(SrvVerificarPago.class);
+
     private final IntegraBDCompra integraBDCompra;
     private final IntegraBDPago integraBDPago;
     private final PublicadorPagos publicadorPagos;
     private final SrvDistribuirCompra srvDistribuirCompra;
-    private final PublicadorEventos publicadorEventos;
     private final int esperaMin;
 
     public SrvVerificarPago(IntegraBDCompra integraBDCompra, IntegraBDPago integraBDPago, PublicadorPagos publicadorPagos,
-                            SrvDistribuirCompra srvDistribuirCompra, PublicadorEventos publicadorEventos,
+                            SrvDistribuirCompra srvDistribuirCompra,
                             @Value("${sso.pagos.espera-min:10}") int esperaMin) {
         this.integraBDCompra = integraBDCompra;
         this.integraBDPago = integraBDPago;
         this.publicadorPagos = publicadorPagos;
         this.srvDistribuirCompra = srvDistribuirCompra;
-        this.publicadorEventos = publicadorEventos;
         this.esperaMin = esperaMin;
     }
 
@@ -54,21 +50,21 @@ public class SrvVerificarPago {
     }
 
     private void registrarPago(ConfirmacionPagoDTO dto, String origen) {
-        Compra compra = integraBDCompra.bloquear(dto.numeroCompra())
-                .orElseThrow(() -> new ErrorNegocio(HttpStatus.NOT_FOUND, "La compra no existe"));
-        if (!compra.getCliente().getCedula().equals(dto.cedula())) {
-            throw new ErrorNegocio(HttpStatus.BAD_REQUEST, "La cédula no corresponde a la compra");
+        Compra compra = integraBDCompra.bloquear(dto.numeroCompra()).orElse(null);
+        if (compra == null) {
+            log.warn("La compra {} no existe para la cédula {}", dto.numeroCompra(), dto.cedula());
+            return;
         }
-        if (compra.getEstado() != EstadoCompra.PENDIENTE_PAGO && compra.getEstado() != EstadoCompra.PAGO_INCOMPLETO) {
+        if (!compra.getCliente().getCedula().equals(dto.cedula())) {
+            log.warn("La cédula {} no corresponde a la compra {}", dto.cedula(), dto.numeroCompra());
+            return;
+        }
+        if (compra.getEstado() != EstadoCompra.PENDIENTE_PAGO) {
             return; // confirmación repetida: la operación es idempotente
         }
         if (!esPagoValido(compra, dto.valorPagado())) {
-            compra.setEstado(EstadoCompra.PAGO_INCOMPLETO);
-            integraBDCompra.save(compra);
-            publicadorEventos.publicarNotificacion(MsgNotificacion.sms(compra.getCliente().getCelular(), PlantillaMensaje.PAGO_INCOMPLETO,
-                    Map.of("numeroCompra", String.valueOf(compra.getNumeroCompra()),
-                            "valorPagado", String.valueOf(dto.valorPagado()),
-                            "valorTotal", compra.getValorTotal().toPlainString())));
+            log.warn("Pago insuficiente para la compra {}. Valor pagado {}. Total {}",
+                    compra.getNumeroCompra(), dto.valorPagado(), compra.getValorTotal());
             return;
         }
         Pago pago = new Pago();

@@ -70,7 +70,7 @@ public class SrvOferta {
             integraBDOferta.save(oferta);
             aceptadas.add(item.idSubasta());
         }
-        srvCarrito.vaciar(cedula);
+        srvCarrito.quitarSubastas(cedula, aceptadas);
         String mensaje = aceptadas.isEmpty() ? "Ninguna oferta fue registrada. Revise los motivos." : MENSAJE_OK;
         return new RespuestaOfertaDTO(mensaje, aceptadas, rechazadas);
     }

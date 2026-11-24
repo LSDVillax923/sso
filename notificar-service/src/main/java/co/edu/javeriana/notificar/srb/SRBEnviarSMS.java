@@ -37,7 +37,6 @@ public class SRBEnviarSMS {
             case OFAC_APROBADO -> "SSO: su compra {numeroCompra} fue aprobada. Valor a pagar con impuestos: ${valor}. Pague en {url}";
             case OFAC_RECHAZADO -> "SSO: no es posible continuar la compra {numeroCompra}. Su identificación no está habilitada para compras.";
             case OFAC_EN_VERIFICACION -> "SSO: su compra {numeroCompra} sigue en verificación. Le avisaremos por este medio.";
-            case PAGO_INCOMPLETO -> "SSO: recibimos ${valorPagado} para la compra {numeroCompra}, pero el total es ${valorTotal}.";
             case COMPRA_TERMINADA -> "SSO: su compra {numeroCompra} fue realizada. El envío quedó programado a su dirección registrada.";
         };
         if (datos != null) {

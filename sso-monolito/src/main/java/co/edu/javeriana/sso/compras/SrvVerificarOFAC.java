@@ -4,12 +4,10 @@ import co.edu.javeriana.sso.pagos.SrvRegistroYoPago;
 
 import co.edu.javeriana.sso.compras.EstadoOFAC;
 import co.edu.javeriana.sso.compras.RespuestaOFACDTO;
-import co.edu.javeriana.sso.compras.IntegraOFAC;
 import co.edu.javeriana.sso.notificacion.PublicadorEventos;
 import co.edu.javeriana.sso.dominio.entidad.Compra;
 import co.edu.javeriana.sso.dominio.entidad.EstadoCompra;
 import co.edu.javeriana.sso.dominio.mensaje.MsgNotificacion;
-import co.edu.javeriana.sso.dominio.mensaje.MsgVerificarOFAC;
 import co.edu.javeriana.sso.dominio.mensaje.PlantillaMensaje;
 import co.edu.javeriana.sso.dominio.integra.IntegraBDCompra;
 import java.time.LocalDateTime;
@@ -22,17 +20,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class SrvVerificarOFAC {
 
-    private final IntegraOFAC integraOFAC;
     private final IntegraBDCompra integraBDCompra;
     private final SrvRegistroYoPago srvRegistroYoPago;
     private final PublicadorEventos publicadorEventos;
     private final int maxIntentos;
     private final int esperaMin;
 
-    public SrvVerificarOFAC(IntegraOFAC integraOFAC, IntegraBDCompra integraBDCompra, SrvRegistroYoPago srvRegistroYoPago,
+    public SrvVerificarOFAC(IntegraBDCompra integraBDCompra, SrvRegistroYoPago srvRegistroYoPago,
                             PublicadorEventos publicadorEventos, @Value("${sso.ofac.max-intentos:6}") int maxIntentos,
                             @Value("${sso.ofac.espera-min:5}") int esperaMin) {
-        this.integraOFAC = integraOFAC;
         this.integraBDCompra = integraBDCompra;
         this.srvRegistroYoPago = srvRegistroYoPago;
         this.publicadorEventos = publicadorEventos;
@@ -41,12 +37,12 @@ public class SrvVerificarOFAC {
     }
 
     @Transactional
-    public void verificar(MsgVerificarOFAC mensaje) {
-        Compra compra = integraBDCompra.findByNumeroCompra(mensaje.numeroCompra()).orElse(null);
+    public void verificar(Long numeroCompra, RespuestaOFACDTO respuesta) {
+        Compra compra = integraBDCompra.findByNumeroCompra(numeroCompra).orElse(null);
         if (compra == null || compra.getEstado() != EstadoCompra.VERIFICANDO_OFAC) {
             return; // mensaje repetido: la compra ya salió de verificación
         }
-        procesarRespuesta(compra, integraOFAC.consultar(mensaje.cedula()));
+        procesarRespuesta(compra, respuesta);
     }
 
     private void procesarRespuesta(Compra compra, RespuestaOFACDTO respuesta) {
