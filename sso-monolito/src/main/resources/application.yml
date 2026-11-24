@@ -55,7 +55,7 @@ sso:
     espera-min: 5
     revision-ms: 300000
   yopago:
-    url-pago: ${YOPAGO_URL_PAGO:http://192.168.1.102:5001}
+    url-pago: ${YOPAGO_URL_PAGO:http://192.168.1.101:5001}
   pagos:
     espera-min: 10
     revision-ms: 600000

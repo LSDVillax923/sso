@@ -10,13 +10,13 @@ El SSO es un **monolito Spring Boot 3.5 (Java 21)**, `sso-monolito`, con 2 répl
 |---|---|---|---|---|
 | `sso-web-spa` | SPA Angular 17 (pantallas `Pan*`, controladores `Ctrl*`, `Proxy*` e `InterceptorJWT`); su build queda dentro de `sso-web.jar` | se descarga de PC1 y corre en el navegador | — | `npm run build:sso-web` |
 | `sso-web` | `sso-web.jar`: gateway, balanceador y el SPA (**presentación Java**) | PC1 · 192.168.1.101 · DMZ | 8443 | `java -jar sso-web.jar` |
-| `yopago/YoPago` | `YoPago.dll` (**monolito .NET, negocio**) | PC1 · 192.168.1.101 | 5002 | `dotnet YoPago.dll` |
+| `yopago/YoPago` | `YoPago.dll` (**monolito .NET, negocio**) | PC2 · 192.168.1.102 | 5002 | `dotnet YoPago.dll` |
 | `ofac-service` | `ofac-service.jar` | PC1 · 192.168.1.101 · Docker | 8091 | `docker run ... ofac-service` |
 | `sso-monolito` | `sso-monolito.jar` réplica 1 (**monolito Java, negocio**) | PC2 · 192.168.1.102 | 8080 | `java -jar sso-monolito.jar` |
 | `sso-monolito` | `sso-monolito.jar` réplica 2 | PC2 · 192.168.1.102 · Docker | 8081 | `docker run -p 8081:8080 ... sso-monolito` |
-| `yopago/YoPago.Web` | `YoPago.Web.dll` (**presentación .NET**) | PC2 · 192.168.1.102 | 5001 | `dotnet YoPago.Web.dll` |
-| `sin-service` | `sin-service.jar` | PC2 · 192.168.1.102 | 8092 | `java -jar sin-service.jar` |
-| `sen-service` | `sen-service.jar` | PC2 · 192.168.1.102 | 8093 | `java -jar sen-service.jar` |
+| `yopago/YoPago.Web` | `YoPago.Web.dll` (**presentación .NET**) | PC1 · 192.168.1.101 · DMZ | 5001 | `dotnet YoPago.Web.dll` |
+| `sin-service` | `sin-service.jar` | PC2 · 192.168.1.102 · Docker (nodo propio) | 8092 | `docker run ... sin-service` |
+| `sen-service` | `sen-service.jar` | PC2 · 192.168.1.102 · Docker (nodo propio) | 8093 | `docker run ... sen-service` |
 | `notificar-service` | `notificar-service.jar` (correo y SMS) | PC2 · 192.168.1.102 | 8094 | `java -jar notificar-service.jar` |
 | `ad-service` | `ad-service.jar`: **Active Directory** simulado (`ListenerLDAPS` → `SRBAutenticacionLDAP` → `IntegraDirectorio`) | PC2 · 192.168.1.102 · Docker | 389 · 636 | `docker run ... ad-service` |
 | `correo-service` | `correo-service.jar`: **servidor de correo** externo simulado (`LisenerSMTP` → `SRBEntregarCorreo` → `IntegraBuzon`) | externo (cualquier PC) | SMTP 587 · buzón web 8095 | `java -jar correo-service.jar` |
@@ -27,14 +27,16 @@ Infraestructura:
 
 | Máquina | Qué corre | Puerto |
 |---|---|---|
-| PC1 | SQL Server Express `bd_yopago` | 1433 |
 | PC1 | PostgreSQL `bd_ofac` en Docker | 5433 |
-| PC2 | PostgreSQL con `bd_sso`, `bd_sin`, `bd_sen` y `bd_notificaciones` (bases y usuarios distintos) | 5432 |
+| PC2 | SQL Server Express `bd_yopago` | 1433 |
+| PC2 | PostgreSQL con `bd_sso` y `bd_notificaciones` (bases y usuarios distintos) | 5432 |
+| PC2 | PostgreSQL `bd_sin` en Docker (contenedor propio) | 5434 |
+| PC2 | PostgreSQL `bd_sen` en Docker (contenedor propio) | 5435 |
 | PC2 | RabbitMQ en Docker: exchange `sso.eventos` y tópico `integracion.pagos` | 5672 · 15672 |
 | PC2 | Active Directory: `ad-service` en Docker (o un contenedor OpenLDAP con el mismo LDIF; use uno de los dos) | 389 · 636 |
 | externo | `bd_correo` y `bd_sms`: bases H2 en archivo de los simuladores (`./datos/`) | — |
 
-**Por qué cruzado:** el enunciado pide presentación y negocio en máquinas distintas en Java y en .NET, y la web en una red aislada. Por eso PC1 (DMZ) tiene la presentación Java y el negocio .NET, y PC2 (red interna) tiene el negocio Java y la presentación .NET.
+PC1 (DMZ) tiene solo las presentaciones (`sso-web` y `YoPago.Web`) y PC2 (red interna) tiene los negocios (`sso-monolito` y `YoPago.dll`). Así, la presentación y el negocio quedan en máquinas distintas tanto en Java como en .NET, y desde Internet solo se entra a PC1.
 
 Las IP son de ejemplo. Corra `ipconfig` en cada PC y cámbielas con variables de entorno al arrancar (`RABBIT_HOST`, `BD_SSO_URL`, `OFAC_URL`, `MONOLITO_1`, `MONOLITO_2`, `AD_URL`, `YOPAGO_URL_PAGO`) o editando cada `application.yml` / `appsettings.json`. En .NET las variables usan doble guion bajo: `Rabbit__Host`, `YoPagoApi__Url`.
 
@@ -43,19 +45,18 @@ Las IP son de ejemplo. Corra `ipconfig` en cada PC y cámbielas con variables de
 | Desde | Hacia | Para |
 |---|---|---|
 | Navegador del cliente | PC1:8443 | SSO (Angular y API) |
-| Navegador del cliente | PC2:5001 | pantallas de YoPago |
+| Navegador del cliente | PC1:5001 | pantallas de YoPago |
 | `sso-web` (PC1) | PC2:8080, PC2:8081 | réplicas del monolito |
-| `YoPago.dll` (PC1) | PC2:5672 | tópico `integracion.pagos` |
-| `YoPago.Web` (PC2) | PC1:5002 | su monolito .NET |
+| `YoPago.Web` (PC1) | PC2:5002 | su monolito .NET |
 | `sso-monolito` (PC2) | PC1:8091 | OFAC |
 | `notificar-service` (PC2) | correo:587, gateway:8096 | simuladores de correo y SMS, si corren en otra máquina |
 
 En Windows (PowerShell como administrador):
 ```powershell
 # PC1
-New-NetFirewallRule -DisplayName SSO -Direction Inbound -Protocol TCP -LocalPort 8443,5002,8091 -Action Allow
+New-NetFirewallRule -DisplayName SSO -Direction Inbound -Protocol TCP -LocalPort 8443,5001,8091 -Action Allow
 # PC2
-New-NetFirewallRule -DisplayName SSO -Direction Inbound -Protocol TCP -LocalPort 8080,8081,5001,5672,15672 -Action Allow
+New-NetFirewallRule -DisplayName SSO -Direction Inbound -Protocol TCP -LocalPort 8080,8081,5002,5672,15672 -Action Allow
 ```
 
 ## Requisitos
@@ -64,7 +65,7 @@ New-NetFirewallRule -DisplayName SSO -Direction Inbound -Protocol TCP -LocalPort
 - Node.js 18 o 20 con npm, solo para volver a compilar el SPA (el build ya viene dentro de `sso-web`).
 - .NET 8 SDK o Visual Studio 2022 con la carga de trabajo "Desarrollo de ASP.NET y web".
 - Docker Desktop en las dos máquinas.
-- PC1: SQL Server Express. PC2: PostgreSQL 16.
+- PC2: SQL Server Express y PostgreSQL 16.
 
 ## Compilar
 
@@ -89,9 +90,9 @@ dotnet publish yopago/YoPago.Web -c Release -o publicado/YoPago.Web
 **PC2 · 192.168.1.102**
 ```bash
 psql -U postgres -f infra/postgres/01-crear-bd_sso.sql
-psql -U postgres -f infra/postgres/03-crear-bd_sin.sql
-psql -U postgres -f infra/postgres/04-crear-bd_sen.sql
 psql -U postgres -f infra/postgres/05-crear-bd_notificaciones.sql
+docker run -d --name bd-sin -p 5434:5432 -e POSTGRES_DB=bd_sin -e POSTGRES_USER=sin -e POSTGRES_PASSWORD=sin postgres:16
+docker run -d --name bd-sen -p 5435:5432 -e POSTGRES_DB=bd_sen -e POSTGRES_USER=sen -e POSTGRES_PASSWORD=sen postgres:16
 docker run -d --name rabbit -p 5672:5672 -p 15672:15672 -e RABBITMQ_DEFAULT_USER=sso -e RABBITMQ_DEFAULT_PASS=sso rabbitmq:3.13-management
 # Active Directory: el simulador del diseño (lee infra/ad/clientes.ldif como bd_directorio)
 cd ad-service && docker build -t ad-service . && cd ..
@@ -106,17 +107,26 @@ docker exec ad ldapadd -x -D "cn=admin,dc=sso,dc=local" -w admin -f /tmp/cliente
 - RabbitMQ no deja entrar al usuario `guest` desde otras máquinas; por eso se crea `sso`. Consola: `http://192.168.1.102:15672`. Las colas y el tópico los declaran los monolitos al arrancar.
 - La réplica 2 corre en un contenedor y entra a PostgreSQL por la IP de PC2. En `postgresql.conf` ponga `listen_addresses = '*'` y en `pg_hba.conf` agregue las líneas que vienen en `01-crear-bd_sso.sql`.
 
+- SQL Server Express con autenticación de Windows: `YoPago.dll` crea `bd_yopago` y sus usuarios de prueba la primera vez que arranca.
+
 **PC1 · 192.168.1.101**
 ```bash
 docker run -d --name bd-ofac -p 5433:5432 -e POSTGRES_DB=bd_ofac -e POSTGRES_USER=ofac -e POSTGRES_PASSWORD=ofac postgres:16
 ```
-SQL Server Express con autenticación de Windows: `YoPago.dll` crea `bd_yopago` y sus usuarios de prueba la primera vez que arranca.
 
 ## Orden de arranque
 
 0. **Externos (opcional):** `correo-service.jar` y `gateway-sms.jar`, antes de `notificar-service` (ver Datos de prueba).
-1. **PC2:** RabbitMQ y AD (ya quedaron arriba) → `sso-monolito.jar` réplica 1 (crea las tablas de bd_sso) → correr `infra/postgres/02-semilla-bd_sso.sql` → réplica 2 en Docker (sección siguiente) → `sin-service.jar` → `sen-service.jar` → `notificar-service.jar` → `YoPago.Web.dll`.
-2. **PC1:** contenedor OFAC (sección siguiente) → `YoPago.dll` → `sso-web.jar`.
+1. **PC2:** RabbitMQ y AD (ya quedaron arriba) → `sso-monolito.jar` réplica 1 (crea las tablas de bd_sso) → correr `infra/postgres/02-semilla-bd_sso.sql` → réplica 2 en Docker (sección siguiente) → contenedores SIN y SEN (comandos de abajo) → `notificar-service.jar` → `YoPago.dll`.
+2. **PC1:** contenedor OFAC (sección siguiente) → `YoPago.Web.dll` → `sso-web.jar`.
+
+En PC2, desde la raíz del repositorio:
+```bash
+cd sin-service && docker build -t sin-service . && cd ..
+docker run -d --name sin -p 8092:8092 -e RABBIT_HOST=192.168.1.102 -e BD_SIN_URL=jdbc:postgresql://192.168.1.102:5434/bd_sin sin-service
+cd sen-service && docker build -t sen-service . && cd ..
+docker run -d --name sen -p 8093:8093 -e RABBIT_HOST=192.168.1.102 -e BD_SEN_URL=jdbc:postgresql://192.168.1.102:5435/bd_sen sen-service
+```
 
 Si arranca un monolito antes que el otro no pasa nada: los mensajes del tópico esperan en sus colas.
 
@@ -179,7 +189,7 @@ Sin el AD levantado se puede probar con `AD_HABILITADO=false` en `sso-monolito` 
 
 ## Probar el flujo completo
 
-**Desde el navegador** (así lo usa el cliente): abra `http://192.168.1.101:8443`, ingrese con `ana` / `1234` (CU1), busque y agregue bienes al carrito (CU2), pulse Ofertar y escriba los valores (CU3). Cuando cierre la subasta (CU4) entre con el enlace del correo a Mis subastas y pulse Iniciar compra (CU5); la pantalla de la compra muestra el estado y el total con impuestos. Pague en YoPago (CU6) con el enlace del SMS y pulse Actualizar en la compra para verla `TERMINADA` (CU7).
+**Desde el navegador** (así lo usa el cliente): abra `http://192.168.1.101:8443`, ingrese con `ana` / `1234` (CU1), busque y agregue bienes al carrito (CU2), pulse Ofertar y escriba los valores (CU3). Cuando cierre la subasta (CU4) entre con el enlace del correo a Mis subastas y pulse Iniciar compra (CU5); la pantalla de la compra muestra el estado y el total con impuestos. Pague en YoPago (CU6) con el enlace del SMS a `http://192.168.1.101:5001` y pulse Actualizar en la compra para verla `TERMINADA` (CU7).
 
 **Desde Git Bash**, llamando el mismo API que usa el SPA:
 
@@ -197,7 +207,7 @@ CU4: cierre la subasta con `UPDATE subasta SET fecha_cierre = NOW() WHERE id_sub
 curl -s $API/ofertas/ganadoras -H "Authorization: Bearer $TOKEN"                        # idOferta ganadora
 curl -s -X POST $API/compras -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"idOferta":1}'   # CU5 (202)
 ```
-CU5 publica `pago.pendiente`; en la consola de RabbitMQ se ve el mensaje pasar por `yopago.pendientes`. CU6: abra `http://192.168.1.102:5001`, ingrese con 1010 / 1234 y pague. YoPago publica `pago.confirmado`. CU7: SIN y SEN confirman y la compra queda `TERMINADA`:
+CU5 publica `pago.pendiente`; en la consola de RabbitMQ se ve el mensaje pasar por `yopago.pendientes`. CU6: abra `http://192.168.1.101:5001`, ingrese con 1010 / 1234 y pague. YoPago publica `pago.confirmado`. CU7: SIN y SEN confirman y la compra queda `TERMINADA`:
 ```bash
 curl -s $API/compras/1 -H "Authorization: Bearer $TOKEN"
 ```
@@ -220,14 +230,15 @@ El diseño usa HTTPS en la DMZ y LDAPS al AD. Por defecto el código arranca en 
 - **Pantalla → controlador → proxy → WS:** en el SPA cada pantalla `Pan*` (componente Angular) le pasa el evento a su `Ctrl*`, que llama al `Proxy*`; el proxy va por HTTPS a `RutasGateway` → `BalanceadorSSO` → `APIRestSSO` → `WS*`, e `InterceptorJWT` le pone el token. El `Ctrl*` le devuelve el resultado a la pantalla (`mostrarBienes`, `mostrarItems`, `mostrarEstado`…).
 - **Sin lógica de negocio en el front:** `sso-web` y el SPA solo enrutan, balancean y muestran; `YoPago.Web` solo muestra y llama a `YoPago.dll`: cada pantalla (vista Razor en `Views/Pan*`) tiene su controlador `Ctrl*` que usa `ProxyYoPagoAPI`, y el proxy llega a los `WS` de `YoPago.dll`. Fechas, valor mínimo, ganador, OFAC, impuestos y pago se validan en los `Srv*`.
 - **Entrada a cada servidor:** la petición entra por un boundary (`APIRestSSO` en `sso-monolito`, `APIRestYP` en `YoPago.dll`, `APIRestOFAC` en OFAC) que la marca y la entrega al `WS`, que es un controlador.
-- **Presentación y negocio en máquinas separadas:** Java en PC1 (`sso-web`) y PC2 (`sso-monolito`). .NET en PC2 (`YoPago.Web`) y PC1 (`YoPago.dll`).
+- **Presentación y negocio en máquinas separadas:** Java en PC1 (`sso-web`) y PC2 (`sso-monolito`). .NET en PC1 (`YoPago.Web`) y PC2 (`YoPago.dll`).
 - **Balanceo del servicio de compra:** `BalanceadorSSO` reparte `/api/**` en round-robin entre las 2 réplicas y descarta las que no responden `/actuator/health`. Las réplicas no guardan sesión (JWT), compiten por las colas y los timers usan ShedLock (tabla `shedlock` en `schema.sql`), así que cada timer corre en una sola réplica.
 - **Caídas de red y OFAC:** timeout de 5 s y 3 intentos (`IntegraOFAC`), `TimerReintentoOFAC` cada 5 min, aviso por SMS a los 6 intentos; `TimerVerificarPago` publica `pago.consulta` si no llega la confirmación; `TimerAckPendiente` si SIN o SEN no confirman; `TimerReintentoNotificacion` en YoPago si RabbitMQ estaba caído.
+- **Nodos de SIN y SEN:** cada servicio corre en su propio contenedor (nodo) con su propia base de datos en otro contenedor.
 - **BD separadas:** bd_sso, bd_yopago, bd_ofac, bd_sin, bd_sen y bd_notificaciones. Ningún sistema se conecta a la BD de otro.
 - **A cada BD solo se llega por un integrador:** en `sso-monolito` los `Srv` usan `IntegraBDCliente`, `IntegraBDSubasta`, `IntegraBDCarrito`, `IntegraBDOferta`, `IntegraBDCompra`, `IntegraBDPago` e `IntegraBDAckCompra` (paquete `dominio.integra`); OFAC usa `IntegraBDOFAC`; YoPago usa `IntegraBDUsuarioYP`, `IntegraBDCompraPendiente` e `IntegraBDPagoYP` (EF Core). Los repositorios y entidades JPA quedan dentro de cada integrador y no salen en el despliegue.
 - **SIN, SEN y notificar-service:** solo tienen `Lisener` → `SRB` → `Integra*`. A su base llegan por `IntegraBDInventario`, `IntegraBDEnvios` e `IntegraBDNotificaciones` y el ack a SSO sale por `IntegraAckSIN` / `IntegraAckSEN`.
 - **Sistemas externos con su detalle:** AD, correo y gateway SMS siguen el mismo patrón entrada → SRB → integrador → BD: `ListenerLDAPS` → `SRBAutenticacionLDAP` → `IntegraDirectorio` → bd_directorio; `LisenerSMTP` → `SRBEntregarCorreo` → `IntegraBuzon` → bd_correo; `LisenerGatewaySMS` → `SRBDespacharSMS` (3 reintentos) → `IntegraOperadorMovil` → bd_sms.
-- **Web aislada:** PC1 es la DMZ; solo `sso-web` recibe tráfico de Internet y el negocio del SSO queda en PC2.
+- **Web aislada:** PC1 es la DMZ; solo `sso-web` y `YoPago.Web` reciben tráfico de Internet y todo el negocio queda en PC2.
 
 ## Relación con el diseño
 
