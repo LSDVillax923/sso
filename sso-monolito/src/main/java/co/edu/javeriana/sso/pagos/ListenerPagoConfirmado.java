@@ -6,11 +6,11 @@ import org.springframework.stereotype.Component;
 
 /** Recibe de YoPago (.NET) cédula, número de compra y valor pagado. Las 2 réplicas compiten por la cola. */
 @Component
-public class LisenerPagoConfirmado {
+public class ListenerPagoConfirmado {
 
     private final SrvVerificarPago srvVerificarPago;
 
-    public LisenerPagoConfirmado(SrvVerificarPago srvVerificarPago) {
+    public ListenerPagoConfirmado(SrvVerificarPago srvVerificarPago) {
         this.srvVerificarPago = srvVerificarPago;
     }
 

@@ -11,12 +11,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 /** API del proveedor: recibe el POST {"to", "message"} que manda IntegraGatewaySMS y lo pasa a SRBDespacharSMS. */
 @RestController
-public class LisenerGatewaySMS {
+public class ListenerGatewaySMS {
 
     private final SRBDespacharSMS srbDespacharSMS;
     private final String apiKey;
 
-    public LisenerGatewaySMS(SRBDespacharSMS srbDespacharSMS, @Value("${gateway.api-key:}") String apiKey) {
+    public ListenerGatewaySMS(SRBDespacharSMS srbDespacharSMS, @Value("${gateway.api-key:}") String apiKey) {
         this.srbDespacharSMS = srbDespacharSMS;
         this.apiKey = apiKey;
     }

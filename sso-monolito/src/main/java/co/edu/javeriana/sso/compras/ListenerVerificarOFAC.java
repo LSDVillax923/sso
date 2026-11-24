@@ -8,12 +8,12 @@ import org.springframework.stereotype.Component;
 
 /** Las dos réplicas escuchan la misma cola: RabbitMQ reparte los mensajes entre ellas. */
 @Component
-public class LisenerVerificarOFAC {
+public class ListenerVerificarOFAC {
 
     private final SrvVerificarOFAC srvVerificarOFAC;
     private final IntegraOFAC integraOFAC;
 
-    public LisenerVerificarOFAC(SrvVerificarOFAC srvVerificarOFAC, IntegraOFAC integraOFAC) {
+    public ListenerVerificarOFAC(SrvVerificarOFAC srvVerificarOFAC, IntegraOFAC integraOFAC) {
         this.srvVerificarOFAC = srvVerificarOFAC;
         this.integraOFAC = integraOFAC;
     }

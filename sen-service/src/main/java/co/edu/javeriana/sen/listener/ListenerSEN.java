@@ -1,4 +1,4 @@
-package co.edu.javeriana.sen.lisener;
+package co.edu.javeriana.sen.listener;
 
 import co.edu.javeriana.sen.config.ConfigRabbitSEN;
 import co.edu.javeriana.sen.dto.DTOEnvioSEN;
@@ -7,11 +7,11 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 @Component
-public class LisenerSEN {
+public class ListenerSEN {
 
     private final SRBProgramarEnvio srbProgramarEnvio;
 
-    public LisenerSEN(SRBProgramarEnvio srbProgramarEnvio) {
+    public ListenerSEN(SRBProgramarEnvio srbProgramarEnvio) {
         this.srbProgramarEnvio = srbProgramarEnvio;
     }
 

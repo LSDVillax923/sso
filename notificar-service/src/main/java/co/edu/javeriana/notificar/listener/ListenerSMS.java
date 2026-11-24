@@ -1,4 +1,4 @@
-package co.edu.javeriana.notificar.lisener;
+package co.edu.javeriana.notificar.listener;
 
 import co.edu.javeriana.notificar.config.ConfigRabbitNotificar;
 import co.edu.javeriana.notificar.dto.DTONotificacion;
@@ -8,11 +8,11 @@ import org.springframework.stereotype.Component;
 
 /** Escucha la cola notif.sms del MOM y pasa cada aviso al SRB. */
 @Component
-public class LisenerSMS {
+public class ListenerSMS {
 
     private final SRBEnviarSMS srbEnviarSMS;
 
-    public LisenerSMS(SRBEnviarSMS srbEnviarSMS) {
+    public ListenerSMS(SRBEnviarSMS srbEnviarSMS) {
         this.srbEnviarSMS = srbEnviarSMS;
     }
 

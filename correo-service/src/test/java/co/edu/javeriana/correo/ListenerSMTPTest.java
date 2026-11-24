@@ -13,7 +13,7 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"correo.puerto=12587", "spring.datasource.url=jdbc:h2:mem:bd_correo"})
-class LisenerSMTPTest {
+class ListenerSMTPTest {
 
     @Autowired
     private TestRestTemplate web;

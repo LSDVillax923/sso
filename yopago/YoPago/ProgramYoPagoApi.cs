@@ -28,8 +28,8 @@ public class ProgramYoPagoApi
         builder.Services.AddScoped<SrvPagoYP>();
         builder.Services.AddSingleton<ConfigRabbitYP>();
         builder.Services.AddSingleton<PublicadorPagoSSO>();
-        builder.Services.AddHostedService<LisenerComprasSSO>();
-        builder.Services.AddHostedService<LisenerConsultaPago>();
+        builder.Services.AddHostedService<ListenerComprasSSO>();
+        builder.Services.AddHostedService<ListenerConsultaPago>();
         builder.Services.AddHostedService<TimerReintentoNotificacion>();
 
         var clave = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(cfg["Jwt:Clave"]!));

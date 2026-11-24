@@ -7,11 +7,11 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 @Component
-public class LisenerAck {
+public class ListenerAck {
 
     private final SrvFinalizarCompra srvFinalizarCompra;
 
-    public LisenerAck(SrvFinalizarCompra srvFinalizarCompra) {
+    public ListenerAck(SrvFinalizarCompra srvFinalizarCompra) {
         this.srvFinalizarCompra = srvFinalizarCompra;
     }
 

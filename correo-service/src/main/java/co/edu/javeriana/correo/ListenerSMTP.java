@@ -31,16 +31,16 @@ import org.springframework.stereotype.Component;
  * y pasa cada correo a SRBEntregarCorreo. No ofrece STARTTLS, así que JavaMail sigue sin TLS.
  */
 @Component
-public class LisenerSMTP implements SmartLifecycle {
+public class ListenerSMTP implements SmartLifecycle {
 
-    private static final Logger log = LoggerFactory.getLogger(LisenerSMTP.class);
+    private static final Logger log = LoggerFactory.getLogger(ListenerSMTP.class);
 
     private final int puerto;
     private final SRBEntregarCorreo srbEntregarCorreo;
     private final ExecutorService sesiones = Executors.newVirtualThreadPerTaskExecutor();
     private volatile ServerSocket servidor;
 
-    public LisenerSMTP(@Value("${correo.puerto:587}") int puerto, SRBEntregarCorreo srbEntregarCorreo) {
+    public ListenerSMTP(@Value("${correo.puerto:587}") int puerto, SRBEntregarCorreo srbEntregarCorreo) {
         this.puerto = puerto;
         this.srbEntregarCorreo = srbEntregarCorreo;
     }
