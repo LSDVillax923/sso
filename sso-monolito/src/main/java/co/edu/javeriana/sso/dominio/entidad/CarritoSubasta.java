@@ -30,10 +30,6 @@ public class CarritoSubasta {
         items.add(item);
     }
 
-    public void vaciar() {
-        items.clear();
-    }
-
     public Long getIdCarrito() { return idCarrito; }
     public void setIdCarrito(Long idCarrito) { this.idCarrito = idCarrito; }
     public Cliente getCliente() { return cliente; }

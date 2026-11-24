@@ -46,7 +46,7 @@ export interface RespuestaOfertaDTO {
 export type EstadoOferta = 'REGISTRADA' | 'RECHAZADA' | 'GANADORA' | 'PERDEDORA';
 
 export type EstadoCompra = 'VERIFICANDO_OFAC' | 'RECHAZADA_OFAC' | 'APROBADA_OFAC' | 'PENDIENTE_PAGO'
-  | 'PAGO_INCOMPLETO' | 'PAGADA' | 'DISTRIBUIDA' | 'TERMINADA';
+  | 'PAGADA' | 'DISTRIBUIDA' | 'TERMINADA';
 
 export interface OfertaDTO {
   idOferta: number;
