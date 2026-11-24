@@ -3,13 +3,13 @@ using YoPago.Datos;
 namespace YoPago.Pagos;
 
 /** Disparador asíncrono: consume la cola yopago.consultas del tópico integracion.pagos. */
-public class LisenerConsultaPago : BackgroundService
+public class ListenerConsultaPago : BackgroundService
 {
     private readonly ConfigRabbitYP rabbit;
     private readonly IServiceScopeFactory scopes;
-    private readonly ILogger<LisenerConsultaPago> log;
+    private readonly ILogger<ListenerConsultaPago> log;
 
-    public LisenerConsultaPago(ConfigRabbitYP rabbit, IServiceScopeFactory scopes, ILogger<LisenerConsultaPago> log)
+    public ListenerConsultaPago(ConfigRabbitYP rabbit, IServiceScopeFactory scopes, ILogger<ListenerConsultaPago> log)
     {
         this.rabbit = rabbit;
         this.scopes = scopes;

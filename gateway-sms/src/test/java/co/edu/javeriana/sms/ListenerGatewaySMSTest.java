@@ -15,7 +15,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {"spring.datasource.url=jdbc:h2:mem:bd_sms", "gateway.api-key=clave-prueba"})
-class LisenerGatewaySMSTest {
+class ListenerGatewaySMSTest {
 
     @Autowired
     private TestRestTemplate web;

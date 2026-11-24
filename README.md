@@ -19,8 +19,8 @@ El SSO es un **monolito Spring Boot 3.5 (Java 21)**, `sso-monolito`, con 2 répl
 | `sen-service` | `sen-service.jar` | PC2 · 192.168.1.102 · Docker (nodo propio) | 8093 | `docker run ... sen-service` |
 | `notificar-service` | `notificar-service.jar` (correo y SMS) | PC2 · 192.168.1.102 | 8094 | `java -jar notificar-service.jar` |
 | `ad-service` | `ad-service.jar`: **Active Directory** simulado (`ListenerLDAPS` → `SRBAutenticacionLDAP` → `IntegraDirectorio`) | PC2 · 192.168.1.102 · Docker | 389 · 636 | `docker run ... ad-service` |
-| `correo-service` | `correo-service.jar`: **servidor de correo** externo simulado (`LisenerSMTP` → `SRBEntregarCorreo` → `IntegraBuzon`) | externo (cualquier PC) | SMTP 587 · buzón web 8095 | `java -jar correo-service.jar` |
-| `gateway-sms` | `gateway-sms.jar`: **gateway SMS** externo simulado (`LisenerGatewaySMS` → `SRBDespacharSMS` → `IntegraOperadorMovil`) | externo (cualquier PC) | 8096 | `java -jar gateway-sms.jar` |
+| `correo-service` | `correo-service.jar`: **servidor de correo** externo simulado (`ListenerSMTP` → `SRBEntregarCorreo` → `IntegraBuzon`) | externo (cualquier PC) | SMTP 587 · buzón web 8095 | `java -jar correo-service.jar` |
+| `gateway-sms` | `gateway-sms.jar`: **gateway SMS** externo simulado (`ListenerGatewaySMS` → `SRBDespacharSMS` → `IntegraOperadorMovil`) | externo (cualquier PC) | 8096 | `java -jar gateway-sms.jar` |
 | `infra` | scripts de BD y usuarios del AD | PC2 | — | ver abajo |
 
 Infraestructura:
@@ -164,9 +164,9 @@ Tópico `integracion.pagos` (colas durables, mensajes JSON persistentes):
 
 | Clave | Cola | Publica | Consume | Contenido |
 |---|---|---|---|---|
-| `pago.pendiente` | `yopago.pendientes` | `PublicadorPagos` (Java) | `LisenerComprasSSO` (.NET) | cédula, número de compra y valor |
-| `pago.consulta` | `yopago.consultas` | `PublicadorPagos` (Java) | `LisenerConsultaPago` (.NET) | número de compra |
-| `pago.confirmado` | `sso.pagos.confirmados` | `PublicadorPagoSSO` (.NET) | `LisenerPagoConfirmado` (Java) | cédula, número de compra y valor pagado |
+| `pago.pendiente` | `yopago.pendientes` | `PublicadorPagos` (Java) | `ListenerComprasSSO` (.NET) | cédula, número de compra y valor |
+| `pago.consulta` | `yopago.consultas` | `PublicadorPagos` (Java) | `ListenerConsultaPago` (.NET) | número de compra |
+| `pago.confirmado` | `sso.pagos.confirmados` | `PublicadorPagoSSO` (.NET) | `ListenerPagoConfirmado` (Java) | cédula, número de compra y valor pagado |
 
 Dentro del SSO, el exchange `sso.eventos` lleva `compras.ofac`, `notif.correo`, `notif.sms`, `sin.ventas`, `sen.envios` y `sso.ack`, cada una con su `.dlq`.
 
@@ -242,8 +242,8 @@ El diseño usa HTTPS en la DMZ y LDAPS al AD. Por defecto el código arranca en 
 - **Nodos de SIN y SEN:** cada servicio corre en su propio contenedor (nodo) con su propia base de datos en otro contenedor.
 - **BD separadas:** bd_sso, bd_yopago, bd_ofac, bd_sin, bd_sen y bd_notificaciones. Ningún sistema se conecta a la BD de otro.
 - **A cada BD solo se llega por su repositorio (Repository = integrador de BD, L03):** en `sso-monolito` los `Srv` usan `RepoCliente`, `RepoSubasta`, `RepoCarrito`, `RepoOferta`, `RepoCompra`, `RepoPago` y `RepoAckCompra` (paquete `dominio.repo`); OFAC usa `RepoPersonaReportada`, `RepoSolicitudOFAC` y `RepoConsultaOFAC`; SIN usa `RepoVentaRecibida` y `RepoInventario`; SEN usa `RepoEnvio`; YoPago usa `IntegraBDUsuarioYP`, `IntegraBDCompraPendiente` e `IntegraBDPagoYP`, que son su repositorio sobre el DbContext de EF Core (N02).
-- **SIN, SEN y notificar-service:** cada `Lisener` llama a su `SRB`. SIN y SEN llegan a su base por sus `Repo*`, y el ack a SSO sale por `IntegraAckSIN` / `IntegraAckSEN`. `notificar-service` sigue usando `IntegraBDNotificaciones`.
-- **Sistemas externos con su detalle:** AD, correo y gateway SMS siguen el mismo patrón entrada → SRB → integrador → BD: `ListenerLDAPS` → `SRBAutenticacionLDAP` → `IntegraDirectorio` → bd_directorio; `LisenerSMTP` → `SRBEntregarCorreo` → `IntegraBuzon` → bd_correo; `LisenerGatewaySMS` → `SRBDespacharSMS` (3 reintentos) → `IntegraOperadorMovil` → bd_sms.
+- **SIN, SEN y notificar-service:** cada `Listener` llama a su `SRB`. SIN y SEN llegan a su base por sus `Repo*`, y el ack a SSO sale por `IntegraAckSIN` / `IntegraAckSEN`. `notificar-service` sigue usando `IntegraBDNotificaciones`.
+- **Sistemas externos con su detalle:** AD, correo y gateway SMS siguen el mismo patrón entrada → SRB → integrador → BD: `ListenerLDAPS` → `SRBAutenticacionLDAP` → `IntegraDirectorio` → bd_directorio; `ListenerSMTP` → `SRBEntregarCorreo` → `IntegraBuzon` → bd_correo; `ListenerGatewaySMS` → `SRBDespacharSMS` (3 reintentos) → `IntegraOperadorMovil` → bd_sms.
 - **Web aislada:** PC1 es la DMZ; solo NGINX y `YoPago.Web` reciben tráfico de Internet y todo el negocio queda en PC2.
 
 ## Relación con el diseño
