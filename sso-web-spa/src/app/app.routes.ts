@@ -10,7 +10,7 @@ import { haySesion } from './proxy/proxy-autenticacion';
 
 const conSesion = () => haySesion() || inject(Router).parseUrl('/login');
 
-// Mismas rutas que ControladorSPA de sso-web devuelve con index.html
+// NGINX devuelve index.html en estas rutas (try_files, L10 s11)
 export const rutas: Routes = [
   { path: 'login', component: PanLogin },
   { path: 'catalogo', component: PanCatalogo, canActivate: [conSesion] },

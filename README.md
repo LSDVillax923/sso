@@ -2,14 +2,14 @@
 
 Sistema de Subastas en Línea de bienes incautados. Grupo 2 · Arquitectura de Software · Javeriana 2026-30 · 2 integrantes.
 
-El SSO es un **monolito Spring Boot 3.5 (Java 21)**, `sso-monolito`, con 2 réplicas detrás del balanceador de `sso-web`, y sus pantallas son un **SPA en Angular 17** (`sso-web-spa`) que sirve `sso-web`. YoPago es un **monolito .NET 8**, `YoPago.dll`. Los dos monolitos se comunican por el tópico RabbitMQ `integracion.pagos`. OFAC, SIN y SEN son sistemas aparte, también en Spring Boot. Los sistemas externos (Active Directory, servidor de correo y gateway SMS) vienen como simuladores con las mismas clases del diseño, para correr los 7 CU sin Gmail ni Twilio. Los nombres de clases, paquetes, componentes, máquinas y puertos son los mismos del diseño en Visual Paradigm.
+El SSO es un **monolito Spring Boot 3.5 (Java 21)**, `sso-monolito`, con 2 réplicas detrás de NGINX (PC1), que sirve el SPA en Angular 17 y reparte `/api` entre ellas. YoPago es un **monolito .NET 8**, `YoPago.dll`. Los dos monolitos se comunican por el tópico RabbitMQ `integracion.pagos`. OFAC, SIN y SEN son sistemas aparte, también en Spring Boot. Los sistemas externos (Active Directory, servidor de correo y gateway SMS) vienen como simuladores con las mismas clases del diseño, para correr los 7 CU sin Gmail ni Twilio. Los nombres de clases, paquetes, componentes, máquinas y puertos son los mismos del diseño en Visual Paradigm.
 
 ## Qué hay en cada carpeta y dónde corre
 
 | Carpeta | Artefacto | Máquina | Puerto | Cómo se arranca (fuera del IDE) |
 |---|---|---|---|---|
-| `sso-web-spa` | SPA Angular 17 (pantallas `Pan*`, controladores `Ctrl*`, `Proxy*` e `InterceptorJWT`); su build queda dentro de `sso-web.jar` | se descarga de PC1 y corre en el navegador | — | `npm run build:sso-web` |
-| `sso-web` | `sso-web.jar`: gateway, balanceador y el SPA (**presentación Java**) | PC1 · 192.168.1.101 · DMZ | 8443 | `java -jar sso-web.jar` |
+| `sso-web-spa` | SPA Angular 17 (pantallas `Pan*`, controladores `Ctrl*`, `Proxy*` e `InterceptorJWT`); NGINX sirve su build (`dist/sso-web-spa/browser`) | se descarga de PC1 y corre en el navegador | — | `npm run build` |
+| `infra/nginx` | NGINX en Docker: sirve el SPA y reenvía `/api` a las 2 réplicas (**presentación Java**) | PC1 · 192.168.1.101 · DMZ | 80 | `docker run ... nginx` |
 | `yopago/YoPago` | `YoPago.dll` (**monolito .NET, negocio**) | PC2 · 192.168.1.102 | 5002 | `dotnet YoPago.dll` |
 | `ofac-service` | `ofac-service.jar` | PC1 · 192.168.1.101 · Docker | 8091 | `docker run ... ofac-service` |
 | `sso-monolito` | `sso-monolito.jar` réplica 1 (**monolito Java, negocio**) | PC2 · 192.168.1.102 | 8080 | `java -jar sso-monolito.jar` |
@@ -36,17 +36,17 @@ Infraestructura:
 | PC2 | Active Directory: `ad-service` en Docker (o un contenedor OpenLDAP con el mismo LDIF; use uno de los dos) | 389 · 636 |
 | externo | `bd_correo` y `bd_sms`: bases H2 en archivo de los simuladores (`./datos/`) | — |
 
-PC1 (DMZ) tiene solo las presentaciones (`sso-web` y `YoPago.Web`) y PC2 (red interna) tiene los negocios (`sso-monolito` y `YoPago.dll`). Así, la presentación y el negocio quedan en máquinas distintas tanto en Java como en .NET, y desde Internet solo se entra a PC1.
+PC1 (DMZ) tiene solo las presentaciones (NGINX y `YoPago.Web`) y PC2 (red interna) tiene los negocios (`sso-monolito` y `YoPago.dll`). Así, la presentación y el negocio quedan en máquinas distintas tanto en Java como en .NET, y desde Internet solo se entra a PC1.
 
-Las IP son de ejemplo. Corra `ipconfig` en cada PC y cámbielas con variables de entorno al arrancar (`RABBIT_HOST`, `BD_SSO_URL`, `OFAC_URL`, `MONOLITO_1`, `MONOLITO_2`, `AD_URL`, `YOPAGO_URL_PAGO`) o editando cada `application.yml` / `appsettings.json`. En .NET las variables usan doble guion bajo: `Rabbit__Host`, `YoPagoApi__Url`.
+Las IP son de ejemplo. Corra `ipconfig` en cada PC y cámbielas con variables de entorno al arrancar (`RABBIT_HOST`, `BD_SSO_URL`, `OFAC_URL`, `AD_URL`, `YOPAGO_URL_PAGO`) o editando cada `application.yml` / `appsettings.json`. En .NET las variables usan doble guion bajo: `Rabbit__Host`, `YoPagoApi__Url`.
 
 ## Firewall
 
 | Desde | Hacia | Para |
 |---|---|---|
-| Navegador del cliente | PC1:8443 | SSO (Angular y API) |
+| Navegador del cliente | PC1:80 | SSO (Angular y API) |
 | Navegador del cliente | PC1:5001 | pantallas de YoPago |
-| `sso-web` (PC1) | PC2:8080, PC2:8081 | réplicas del monolito |
+| NGINX (PC1) | PC2:8080, PC2:8081 | réplicas del monolito |
 | `YoPago.Web` (PC1) | PC2:5002 | su monolito .NET |
 | `sso-monolito` (PC2) | PC1:8091 | OFAC |
 | `notificar-service` (PC2) | correo:587, gateway:8096 | simuladores de correo y SMS, si corren en otra máquina |
@@ -54,7 +54,7 @@ Las IP son de ejemplo. Corra `ipconfig` en cada PC y cámbielas con variables de
 En Windows (PowerShell como administrador):
 ```powershell
 # PC1
-New-NetFirewallRule -DisplayName SSO -Direction Inbound -Protocol TCP -LocalPort 8443,5001,8091 -Action Allow
+New-NetFirewallRule -DisplayName SSO -Direction Inbound -Protocol TCP -LocalPort 80,5001,8091 -Action Allow
 # PC2
 New-NetFirewallRule -DisplayName SSO -Direction Inbound -Protocol TCP -LocalPort 8080,8081,5002,5672,15672 -Action Allow
 ```
@@ -62,7 +62,7 @@ New-NetFirewallRule -DisplayName SSO -Direction Inbound -Protocol TCP -LocalPort
 ## Requisitos
 
 - JDK 21 y Maven (o IntelliJ, que trae Maven).
-- Node.js 18 o 20 con npm, solo para volver a compilar el SPA (el build ya viene dentro de `sso-web`).
+- Node.js 18 o 20 con npm, para compilar el SPA que sirve NGINX.
 - .NET 8 SDK o Visual Studio 2022 con la carga de trabajo "Desarrollo de ASP.NET y web".
 - Docker Desktop en las dos máquinas.
 - PC2: SQL Server Express y PostgreSQL 16.
@@ -70,12 +70,12 @@ New-NetFirewallRule -DisplayName SSO -Direction Inbound -Protocol TCP -LocalPort
 ## Compilar
 
 ```bash
-# Angular (solo si cambia el SPA): compila y copia el build a sso-web/src/main/resources/static
-cd sso-web-spa && npm install && npm run build:sso-web && cd ..
+# Angular: compila el SPA para NGINX
+cd sso-web-spa && npm install && npm run build && cd ..
 ```
 
 ```bash
-# Java: desde esta carpeta compila los 9 módulos, corre sus pruebas y deja cada .jar en <módulo>/target/
+# Java: desde esta carpeta compila los 8 módulos, corre sus pruebas y deja cada .jar en <módulo>/target/
 mvn package
 ```
 
@@ -114,11 +114,17 @@ docker exec ad ldapadd -x -D "cn=admin,dc=sso,dc=local" -w admin -f /tmp/cliente
 docker run -d --name bd-ofac -p 5433:5432 -e POSTGRES_DB=bd_ofac -e POSTGRES_USER=ofac -e POSTGRES_PASSWORD=ofac postgres:16
 ```
 
+Para preparar NGINX en PC1, ejecute desde la raíz del repositorio cuando corresponda en el orden de arranque:
+```bash
+docker run -d --name nginx -p 80:80 -v "${PWD}/sso-web-spa/dist/sso-web-spa/browser:/usr/share/nginx/html:ro" -v "${PWD}/infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro" nginx:1.27
+```
+Si cambian las IP, edite el upstream de `infra/nginx/default.conf` y reinicie con `docker restart nginx`.
+
 ## Orden de arranque
 
 0. **Externos (opcional):** `correo-service.jar` y `gateway-sms.jar`, antes de `notificar-service` (ver Datos de prueba).
 1. **PC2:** RabbitMQ y AD (ya quedaron arriba) → `sso-monolito.jar` réplica 1 (crea las tablas de bd_sso) → correr `infra/postgres/02-semilla-bd_sso.sql` → réplica 2 en Docker (sección siguiente) → contenedores SIN y SEN (comandos de abajo) → `notificar-service.jar` → `YoPago.dll`.
-2. **PC1:** contenedor OFAC (sección siguiente) → `YoPago.Web.dll` → `sso-web.jar`.
+2. **PC1:** contenedor OFAC (sección siguiente) → `YoPago.Web.dll` → contenedor NGINX.
 
 En PC2, desde la raíz del repositorio:
 ```bash
@@ -189,12 +195,12 @@ Sin el AD levantado se puede probar con `AD_HABILITADO=false` en `sso-monolito` 
 
 ## Probar el flujo completo
 
-**Desde el navegador** (así lo usa el cliente): abra `http://192.168.1.101:8443`, ingrese con `ana` / `1234` (CU1), busque y agregue bienes al carrito (CU2), pulse Ofertar y escriba los valores (CU3). Cuando cierre la subasta (CU4) entre con el enlace del correo a Mis subastas y pulse Iniciar compra (CU5); la pantalla de la compra muestra el estado y el total con impuestos. Pague en YoPago (CU6) con el enlace del SMS a `http://192.168.1.101:5001` y pulse Actualizar en la compra para verla `TERMINADA` (CU7).
+**Desde el navegador** (así lo usa el cliente): abra `http://192.168.1.101`, ingrese con `ana` / `1234` (CU1), busque y agregue bienes al carrito (CU2), pulse Ofertar y escriba los valores (CU3). Cuando cierre la subasta (CU4) entre con el enlace del correo a Mis subastas y pulse Iniciar compra (CU5); la pantalla de la compra muestra el estado y el total con impuestos. Pague en YoPago (CU6) con el enlace del SMS a `http://192.168.1.101:5001` y pulse Actualizar en la compra para verla `TERMINADA` (CU7).
 
 **Desde Git Bash**, llamando el mismo API que usa el SPA:
 
 ```bash
-API=http://192.168.1.101:8443/api
+API=http://192.168.1.101/api
 TOKEN=$(curl -s -X POST $API/auth/login -H "Content-Type: application/json" -d '{"usuario":"ana","clave":"1234"}' | sed 's/.*"token":"\([^"]*\)".*/\1/')
 
 curl -s "$API/catalogo?filtro=" -H "Authorization: Bearer $TOKEN"                       # CU2 buscar
@@ -212,13 +218,13 @@ CU5 publica `pago.pendiente`; en la consola de RabbitMQ se ve el mensaje pasar p
 curl -s $API/compras/1 -H "Authorization: Bearer $TOKEN"
 ```
 
-Para ver el balanceo, repita una petición con `curl -i`: la cabecera `X-Atendido-Por` dice qué réplica respondió (`sso-monolito-1` o `sso-monolito-2`), porque la pone `APIRestSSO`, el boundary de entrada del monolito. Si detiene una réplica (`docker stop sso2`), `sso-web` sigue respondiendo con la otra.
+Para ver el balanceo, repita una petición con `curl -i`: la cabecera `X-Atendido-Por` dice qué réplica respondió (`sso-monolito-1` o `sso-monolito-2`), porque la pone `APIRestSSO`, el boundary de entrada del monolito. Si detiene una réplica (`docker stop sso2`), NGINX sigue respondiendo con la otra.
 
 ## HTTPS y LDAPS
 
 El diseño usa HTTPS en la DMZ y LDAPS al AD. Por defecto el código arranca en HTTP/LDAP para que se pueda probar sin certificados.
 
-- HTTPS en PC1: `keytool -genkeypair -alias sso-web -keyalg RSA -keysize 2048 -storetype PKCS12 -keystore sso-web.p12 -validity 365` y arranque con `SSL_ENABLED=true SSL_PASS=<clave>`. Luego cambie las URL `http://192.168.1.101:8443` por `https://`.
+- NGINX escucha en el puerto 80 como en clase (L10 s8); para HTTPS se agrega `listen 443 ssl` con su certificado en `infra/nginx/default.conf`.
 - LDAPS: `ad-service` genera su certificado (`ad-ldaps.p12`, clave `AD_KEYSTORE_CLAVE`, por defecto `cambiar`) la primera vez que arranca. Expórtelo e impórtelo en el Java del monolito y arranque con `AD_URL=ldaps://192.168.1.102:636`:
   ```bash
   keytool -exportcert -rfc -alias ad -keystore ad-ldaps.p12 -storepass cambiar -file ad.crt
@@ -227,18 +233,18 @@ El diseño usa HTTPS en la DMZ y LDAPS al AD. Por defecto el código arranca en 
 
 ## Cómo se cumplen las reglas del enunciado
 
-- **Pantalla → controlador → proxy → WS:** en el SPA cada pantalla `Pan*` (componente Angular) le pasa el evento a su `Ctrl*`, que llama al `Proxy*`; el proxy va por HTTPS a `RutasGateway` → `BalanceadorSSO` → `APIRestSSO` → `WS*`, e `InterceptorJWT` le pone el token. El `Ctrl*` le devuelve el resultado a la pantalla (`mostrarBienes`, `mostrarItems`, `mostrarEstado`…).
-- **Sin lógica de negocio en el front:** `sso-web` y el SPA solo enrutan, balancean y muestran; `YoPago.Web` solo muestra y llama a `YoPago.dll`: cada pantalla (vista Razor en `Views/Pan*`) tiene su controlador `Ctrl*` que usa `ProxyYoPagoAPI`, y el proxy llega a los `WS` de `YoPago.dll`. Fechas, valor mínimo, ganador, OFAC, impuestos y pago se validan en los `Srv*`.
+- **Pantalla → controlador → proxy → WS:** en el SPA cada pantalla `Pan*` (componente Angular) le pasa el evento a su `Ctrl*`, que llama al `Proxy*`; el proxy va a NGINX → `APIRestSSO` → `WS*`, e `InterceptorJWT` le pone el token. El `Ctrl*` le devuelve el resultado a la pantalla (`mostrarBienes`, `mostrarItems`, `mostrarEstado`…).
+- **Sin lógica de negocio en el front:** NGINX sirve el SPA y balancea las peticiones. El SPA muestra las pantallas. `YoPago.Web` muestra las pantallas y llama a `YoPago.dll`. En .NET, cada pantalla (vista Razor en `Views/Pan*`) tiene su controlador `Ctrl*` que usa `ProxyYoPagoAPI`, y el proxy llega a los `WS` de `YoPago.dll`. Fechas, valor mínimo, ganador, OFAC, impuestos y pago se validan en los `Srv*`.
 - **Entrada a cada servidor:** la petición entra por un boundary (`APIRestSSO` en `sso-monolito`, `APIRestYP` en `YoPago.dll`, `APIRestOFAC` en OFAC) que la marca y la entrega al `WS`, que es un controlador.
-- **Presentación y negocio en máquinas separadas:** Java en PC1 (`sso-web`) y PC2 (`sso-monolito`). .NET en PC1 (`YoPago.Web`) y PC2 (`YoPago.dll`).
-- **Balanceo del servicio de compra:** `BalanceadorSSO` reparte `/api/**` en round-robin entre las 2 réplicas y descarta las que no responden `/actuator/health`. Las réplicas no guardan sesión (JWT), compiten por las colas y los timers usan ShedLock (tabla `shedlock` en `schema.sql`), así que cada timer corre en una sola réplica.
+- **Presentación y negocio en máquinas separadas:** Java en PC1 (NGINX) y PC2 (`sso-monolito`). .NET en PC1 (`YoPago.Web`) y PC2 (`YoPago.dll`).
+- **Balanceo del servicio de compra:** NGINX reparte `/api/` con `least_conn` entre las 2 réplicas (upstream en `infra/nginx/default.conf`). Las réplicas no guardan sesión (JWT), compiten por las colas y los timers usan ShedLock (tabla `shedlock` en `schema.sql`), así que cada timer corre en una sola réplica.
 - **Caídas de red y OFAC:** timeout de 5 s y 3 intentos (`IntegraOFAC`), `TimerReintentoOFAC` cada 5 min, aviso por SMS a los 6 intentos; `TimerVerificarPago` publica `pago.consulta` si no llega la confirmación; `TimerAckPendiente` si SIN o SEN no confirman; `TimerReintentoNotificacion` en YoPago si RabbitMQ estaba caído.
 - **Nodos de SIN y SEN:** cada servicio corre en su propio contenedor (nodo) con su propia base de datos en otro contenedor.
 - **BD separadas:** bd_sso, bd_yopago, bd_ofac, bd_sin, bd_sen y bd_notificaciones. Ningún sistema se conecta a la BD de otro.
 - **A cada BD solo se llega por un integrador:** en `sso-monolito` los `Srv` usan `IntegraBDCliente`, `IntegraBDSubasta`, `IntegraBDCarrito`, `IntegraBDOferta`, `IntegraBDCompra`, `IntegraBDPago` e `IntegraBDAckCompra` (paquete `dominio.integra`); OFAC usa `IntegraBDOFAC`; YoPago usa `IntegraBDUsuarioYP`, `IntegraBDCompraPendiente` e `IntegraBDPagoYP` (EF Core). Los repositorios y entidades JPA quedan dentro de cada integrador y no salen en el despliegue.
 - **SIN, SEN y notificar-service:** solo tienen `Lisener` → `SRB` → `Integra*`. A su base llegan por `IntegraBDInventario`, `IntegraBDEnvios` e `IntegraBDNotificaciones` y el ack a SSO sale por `IntegraAckSIN` / `IntegraAckSEN`.
 - **Sistemas externos con su detalle:** AD, correo y gateway SMS siguen el mismo patrón entrada → SRB → integrador → BD: `ListenerLDAPS` → `SRBAutenticacionLDAP` → `IntegraDirectorio` → bd_directorio; `LisenerSMTP` → `SRBEntregarCorreo` → `IntegraBuzon` → bd_correo; `LisenerGatewaySMS` → `SRBDespacharSMS` (3 reintentos) → `IntegraOperadorMovil` → bd_sms.
-- **Web aislada:** PC1 es la DMZ; solo `sso-web` y `YoPago.Web` reciben tráfico de Internet y todo el negocio queda en PC2.
+- **Web aislada:** PC1 es la DMZ; solo NGINX y `YoPago.Web` reciben tráfico de Internet y todo el negocio queda en PC2.
 
 ## Relación con el diseño
 
@@ -257,8 +263,6 @@ En los diagramas los pasos de cada historia van 1, 2, 3 en el SSO y los demás s
 - `ad-service`: `LdapTemplate.authenticate` igual que `IntegraAD` (clave buena, clave mala y usuario inexistente) y bind por LDAPS.
 - `correo-service`: envío con JavaMail como `IntegraSMTP` (AUTH, HTML en UTF-8) y lectura del buzón.
 - `gateway-sms`: `POST {to, message}` como `IntegraGatewaySMS`, entrega, 3 reintentos con un celular inválido y API key equivocada.
-
-El SPA se probó en el navegador servido por `sso-web` real (gateway y balanceador con 2 réplicas): login, catálogo, carrito, ofertas con rechazo por valor mínimo, inicio de compra, estado y cierre de sesión.
 
 ## Lo que falta
 
