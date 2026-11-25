@@ -149,7 +149,7 @@ docker run -d --name ofac -p 8091:8091 -e BD_OFAC_URL=jdbc:postgresql://192.168.
 ```bash
 # PC2
 cd sso-monolito && docker build -t sso-monolito .
-docker run -d --name sso2 -p 8081:8080 -e REPLICA=sso-monolito-2 -e OFAC_URL=http://192.168.1.101:8091/api/ofac/clientes/ -e RABBIT_HOST=192.168.1.102 -e BD_SSO_URL=jdbc:postgresql://192.168.1.102:5432/bd_sso -e AD_URL=ldap://192.168.1.102:389 sso-monolito
+docker run -d --name sso2 -p 8081:8080 -e REPLICA=sso-monolito-2 -e TIMERS_ACTIVOS=false -e OFAC_URL=http://192.168.1.101:8091/api/ofac/clientes/ -e RABBIT_HOST=192.168.1.102 -e BD_SSO_URL=jdbc:postgresql://192.168.1.102:5432/bd_sso -e AD_URL=ldap://192.168.1.102:389 sso-monolito
 ```
 
 Prueba de comunicación entre los dos contenedores:
@@ -237,8 +237,8 @@ El diseño usa HTTPS en la DMZ y LDAPS al AD. Por defecto el código arranca en 
 - **Sin lógica de negocio en el front:** NGINX sirve el SPA y balancea las peticiones. El SPA muestra las pantallas. `YoPago.Web` muestra las pantallas y llama a `YoPago.dll`. En .NET, cada pantalla (vista Razor en `Views/Pan*`) tiene su controlador `Ctrl*` que usa `ProxyYoPagoAPI`, y el proxy llega a los `WS` de `YoPago.dll`. Fechas, valor mínimo, ganador, OFAC, impuestos y pago se validan en los `Srv*`.
 - **Entrada a cada servidor:** la petición entra por un boundary (`APIRestSSO` en `sso-monolito`, `APIRestYP` en `YoPago.dll`, `APIRestOFAC` en OFAC) que la marca y la entrega al `WS`, que es un controlador.
 - **Presentación y negocio en máquinas separadas:** Java en PC1 (NGINX) y PC2 (`sso-monolito`). .NET en PC1 (`YoPago.Web`) y PC2 (`YoPago.dll`).
-- **Balanceo del servicio de compra:** NGINX reparte `/api/` con `least_conn` entre las 2 réplicas (upstream en `infra/nginx/default.conf`). Las réplicas no guardan sesión (JWT), compiten por las colas y los timers usan ShedLock (tabla `shedlock` en `schema.sql`), así que cada timer corre en una sola réplica.
-- **Caídas de red y OFAC:** timeout de 5 s y 3 intentos (`IntegraOFAC`), `TimerReintentoOFAC` cada 5 min, aviso por SMS a los 6 intentos; `TimerVerificarPago` publica `pago.consulta` si no llega la confirmación; `TimerAckPendiente` si SIN o SEN no confirman; `TimerReintentoNotificacion` en YoPago si RabbitMQ estaba caído.
+- **Balanceo del servicio de compra:** NGINX reparte `/api/` con `least_conn` entre las 2 réplicas (upstream en `infra/nginx/default.conf`). Las réplicas no guardan sesión (JWT) y compiten por las colas. Los timers corren solo en la réplica 1 (`sso.timers.activos`). La réplica 2 arranca con `TIMERS_ACTIVOS=false` (C9 s8).
+- **Caídas de red y OFAC:** timeout de 5 s y 3 reintentos con WebClient (`IntegraOFAC`, L07), `TimerReintentoOFAC` cada 5 min, aviso por SMS a los 6 intentos; `TimerVerificarPago` publica `pago.consulta` si no llega la confirmación; `TimerAckPendiente` si SIN o SEN no confirman; `TimerReintentoNotificacion` en YoPago si RabbitMQ estaba caído.
 - **Nodos de SIN y SEN:** cada servicio corre en su propio contenedor (nodo) con su propia base de datos en otro contenedor.
 - **BD separadas:** bd_sso, bd_yopago, bd_ofac, bd_sin, bd_sen y bd_notificaciones. Ningún sistema se conecta a la BD de otro.
 - **A cada BD solo se llega por su repositorio (Repository = integrador de BD, L03):** en `sso-monolito` los `Srv` usan `RepoCliente`, `RepoSubasta`, `RepoCarrito`, `RepoOferta`, `RepoCompra`, `RepoPago` y `RepoAckCompra` (paquete `dominio.repo`); OFAC usa `RepoPersonaReportada`, `RepoSolicitudOFAC` y `RepoConsultaOFAC`; SIN usa `RepoVentaRecibida` y `RepoInventario`; SEN usa `RepoEnvio`; YoPago usa `IntegraBDUsuarioYP`, `IntegraBDCompraPendiente` e `IntegraBDPagoYP`, que son su repositorio sobre el DbContext de EF Core (N02).

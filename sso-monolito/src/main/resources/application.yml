@@ -13,9 +13,6 @@ spring:
     hibernate:
       ddl-auto: update
     open-in-view: false
-  sql:
-    init:
-      mode: always
   rabbitmq:
     host: ${RABBIT_HOST:192.168.1.102}
     port: 5672
@@ -47,8 +44,8 @@ sso:
   url-front: ${URL_FRONT:http://192.168.1.101}
   impuestos:
     iva: 0.19
-  http:
-    timeout-ms: 5000
+  timers:
+    activos: ${TIMERS_ACTIVOS:true}
   ofac:
     url: ${OFAC_URL:http://192.168.1.101:8091/api/ofac/clientes/}
     max-intentos: 6

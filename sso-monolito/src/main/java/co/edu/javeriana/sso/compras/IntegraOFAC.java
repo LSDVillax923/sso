@@ -2,38 +2,39 @@ package co.edu.javeriana.sso.compras;
 
 import co.edu.javeriana.sso.compras.EstadoOFAC;
 import co.edu.javeriana.sso.compras.RespuestaOFACDTO;
+import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Recover;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
-/** Consulta la OFAC con timeout y 3 intentos; si no responde, la compra se trata como ENPROCESO. */
+/** Consulta la OFAC con WebClient: timeout de 5 s y 3 reintentos; si no responde, la compra se trata como ENPROCESO (L07). */
 @Component
 public class IntegraOFAC {
 
     private static final Logger log = LoggerFactory.getLogger(IntegraOFAC.class);
 
-    private final RestClient restClient;
+    private final WebClient webClient;
     private final String urlOFAC;
 
-    public IntegraOFAC(RestClient restClient, @Value("${sso.ofac.url}") String urlOFAC) {
-        this.restClient = restClient;
+    public IntegraOFAC(WebClient.Builder builder, @Value("${sso.ofac.url}") String urlOFAC) {
+        this.webClient = builder.build();
         this.urlOFAC = urlOFAC;
     }
 
-    @Retryable(retryFor = RestClientException.class, maxAttempts = 3, backoff = @Backoff(delay = 1000))
     public RespuestaOFACDTO consultar(String cedula) {
-        return restClient.get().uri(urlOFAC + "{cedula}", cedula).retrieve().body(RespuestaOFACDTO.class);
-    }
-
-    @Recover
-    public RespuestaOFACDTO sinRespuesta(RestClientException e, String cedula) {
-        log.warn("OFAC no responde para la cédula {}: {}", cedula, e.getMessage());
-        return new RespuestaOFACDTO(cedula, EstadoOFAC.ENPROCESO);
+        return webClient.get().uri(urlOFAC + "{cedula}", cedula)
+                .retrieve()
+                .bodyToMono(RespuestaOFACDTO.class)
+                .timeout(Duration.ofSeconds(5))
+                .retryWhen(Retry.backoff(3, Duration.ofSeconds(2)))
+                .onErrorResume(e -> {
+                    log.warn("OFAC no responde para la cédula {}: {}", cedula, e.getMessage());
+                    return Mono.just(new RespuestaOFACDTO(cedula, EstadoOFAC.ENPROCESO));
+                })
+                .block();
     }
 }
