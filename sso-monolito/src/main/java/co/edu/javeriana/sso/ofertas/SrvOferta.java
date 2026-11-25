@@ -20,7 +20,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -45,10 +44,10 @@ public class SrvOferta {
     @Transactional
     public RespuestaOfertaDTO registrarOfertas(String cedula, PeticionOfertaDTO peticion) {
         if (peticion == null || peticion.items() == null || peticion.items().isEmpty()) {
-            throw new ErrorNegocio(HttpStatus.BAD_REQUEST, "La petición no trae bienes para ofertar");
+            throw new ErrorNegocio("La petición no trae bienes para ofertar");
         }
         Cliente cliente = repoCliente.findById(cedula)
-                .orElseThrow(() -> new ErrorNegocio(HttpStatus.FORBIDDEN, "Cliente no registrado"));
+                .orElseThrow(() -> new ErrorNegocio("Cliente no registrado"));
         List<Long> aceptadas = new ArrayList<>();
         Map<Long, String> rechazadas = new LinkedHashMap<>();
         for (ItemOfertaDTO item : peticion.items()) {
@@ -57,8 +56,9 @@ public class SrvOferta {
                 rechazadas.put(item.idSubasta(), "La subasta no existe");
                 continue;
             }
-            if (!validarOferta(subasta.get(), item.valor())) {
-                rechazadas.put(item.idSubasta(), motivoRechazo(subasta.get(), item.valor()));
+            String motivo = motivoRechazo(subasta.get(), item.valor());
+            if (motivo != null) {
+                rechazadas.put(item.idSubasta(), motivo);
                 continue;
             }
             Oferta oferta = new Oferta();
@@ -84,10 +84,6 @@ public class SrvOferta {
     }
 
     /** Regla del enunciado: entre fecha de inicio y cierre, y valor mayor o igual al mínimo. */
-    private boolean validarOferta(Subasta subasta, BigDecimal valor) {
-        return motivoRechazo(subasta, valor) == null;
-    }
-
     private String motivoRechazo(Subasta subasta, BigDecimal valor) {
         if (!subasta.estaAbierta(LocalDateTime.now())) {
             return "La subasta no está recibiendo ofertas";

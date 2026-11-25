@@ -1,6 +1,7 @@
 package co.edu.javeriana.sso.catalogo;
 
 import co.edu.javeriana.sso.catalogo.BienDTO;
+import co.edu.javeriana.sso.dominio.entidad.EstadoSubasta;
 import co.edu.javeriana.sso.dominio.repo.RepoSubasta;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,7 +19,8 @@ public class SrvCatalogo {
 
     @Transactional(readOnly = true)
     public List<BienDTO> buscarBienesEnSubasta(String filtro) {
-        return repoSubasta.buscarAbiertas(filtro, LocalDateTime.now()).stream()
+        return repoSubasta.buscarPorEstado(EstadoSubasta.ABIERTA, filtro == null ? "" : filtro.trim(), LocalDateTime.now())
+                .stream()
                 .map(s -> new BienDTO(s.getIdSubasta(), s.getBien().getIdBien(), s.getBien().getNombre(),
                         s.getBien().getDescripcion(), s.getBien().getValorMinimo(), s.getFechaCierre()))
                 .toList();

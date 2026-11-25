@@ -38,7 +38,7 @@ public class SrvVerificarOFAC {
 
     @Transactional
     public void verificar(Long numeroCompra, RespuestaOFACDTO respuesta) {
-        Compra compra = repoCompra.findByNumeroCompra(numeroCompra).orElse(null);
+        Compra compra = repoCompra.findById(numeroCompra).orElse(null);
         if (compra == null || compra.getEstado() != EstadoCompra.VERIFICANDO_OFAC) {
             return; // mensaje repetido: la compra ya salió de verificación
         }
@@ -48,11 +48,7 @@ public class SrvVerificarOFAC {
     private void procesarRespuesta(Compra compra, RespuestaOFACDTO respuesta) {
         EstadoOFAC estado = respuesta == null || respuesta.estado() == null ? EstadoOFAC.ENPROCESO : respuesta.estado();
         switch (estado) {
-            case APROBADO -> {
-                compra.setEstado(EstadoCompra.APROBADA_OFAC);
-                repoCompra.save(compra);
-                srvRegistroYoPago.registrarCompraPendiente(compra);
-            }
+            case APROBADO -> srvRegistroYoPago.registrarCompraPendiente(compra);
             case RECHAZADO -> {
                 compra.setEstado(EstadoCompra.RECHAZADA_OFAC);
                 repoCompra.save(compra);

@@ -14,8 +14,6 @@ import org.springframework.data.repository.query.Param;
 
 public interface RepoCompra extends JpaRepository<Compra, Long> {
 
-    Optional<Compra> findByNumeroCompra(Long numeroCompra);
-
     /** Bloquea la fila: los dos ack pueden llegar a la vez, cada uno a una réplica distinta. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Compra c where c.numeroCompra = :numero")

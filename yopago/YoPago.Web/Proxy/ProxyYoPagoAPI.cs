@@ -19,9 +19,9 @@ public class ProxyYoPagoAPI
         return respuesta.IsSuccessStatusCode ? await respuesta.Content.ReadAsStringAsync() : null;
     }
 
-    public async Task<List<CompraPendienteVM>> ObtenerPendientesAsync(string cedula, string token)
+    public async Task<List<CompraPendienteVM>> ObtenerPendientesAsync(string token)
     {
-        using var peticion = new HttpRequestMessage(HttpMethod.Get, $"api/compras-pendientes/{Uri.EscapeDataString(cedula)}");
+        using var peticion = new HttpRequestMessage(HttpMethod.Get, "api/compras-pendientes");
         peticion.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         using var respuesta = await http.SendAsync(peticion);
         respuesta.EnsureSuccessStatusCode();
@@ -32,7 +32,7 @@ public class ProxyYoPagoAPI
     {
         using var peticion = new HttpRequestMessage(HttpMethod.Post, "api/pagos")
         {
-            Content = JsonContent.Create(new { numeroCompra = vm.NumeroCompra, valor = vm.Valor, medioPago = vm.MedioPago })
+            Content = JsonContent.Create(new { numeroCompra = vm.NumeroCompra })
         };
         peticion.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         using var respuesta = await http.SendAsync(peticion);

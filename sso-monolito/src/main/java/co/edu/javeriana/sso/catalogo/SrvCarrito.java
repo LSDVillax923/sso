@@ -11,7 +11,6 @@ import co.edu.javeriana.sso.dominio.repo.RepoCliente;
 import co.edu.javeriana.sso.dominio.repo.RepoSubasta;
 import java.time.LocalDateTime;
 import java.util.List;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,18 +30,17 @@ public class SrvCarrito {
     @Transactional
     public void agregarItem(String cedula, Long idSubasta) {
         Subasta subasta = repoSubasta.findById(idSubasta)
-                .orElseThrow(() -> new ErrorNegocio(HttpStatus.NOT_FOUND, "La subasta no existe"));
+                .orElseThrow(() -> new ErrorNegocio("La subasta no existe"));
         if (!subasta.estaAbierta(LocalDateTime.now())) {
-            throw new ErrorNegocio(HttpStatus.CONFLICT, "La subasta no está abierta");
+            throw new ErrorNegocio("La subasta no está abierta");
         }
         CarritoSubasta carrito = repoCarrito.findByClienteCedula(cedula).orElseGet(() -> nuevoCarrito(cedula));
         boolean repetido = carrito.getItems().stream().anyMatch(i -> i.getSubasta().getIdSubasta().equals(idSubasta));
         if (repetido) {
-            throw new ErrorNegocio(HttpStatus.CONFLICT, "El bien ya está en el carrito");
+            throw new ErrorNegocio("El bien ya está en el carrito");
         }
         ItemCarrito item = new ItemCarrito();
         item.setSubasta(subasta);
-        item.setFechaAgregado(LocalDateTime.now());
         carrito.agregar(item);
         repoCarrito.save(carrito);
     }
@@ -71,7 +69,7 @@ public class SrvCarrito {
 
     private CarritoSubasta nuevoCarrito(String cedula) {
         Cliente cliente = repoCliente.findById(cedula)
-                .orElseThrow(() -> new ErrorNegocio(HttpStatus.FORBIDDEN, "Cliente no registrado"));
+                .orElseThrow(() -> new ErrorNegocio("Cliente no registrado"));
         CarritoSubasta carrito = new CarritoSubasta();
         carrito.setCliente(cliente);
         return carrito;

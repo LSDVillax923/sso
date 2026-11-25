@@ -38,7 +38,7 @@ public class SrvVerificarPago {
 
     @Transactional
     public void confirmarPago(ConfirmacionPagoDTO dto) {
-        registrarPago(dto, "TOPICO_YOPAGO");
+        registrarPago(dto);
     }
 
     /** Compras que siguen sin pago después de un rato: se le pregunta a YoPago por el tópico. */
@@ -49,7 +49,7 @@ public class SrvVerificarPago {
                 .forEach(c -> publicadorPagos.publicarConsulta(c.getNumeroCompra()));
     }
 
-    private void registrarPago(ConfirmacionPagoDTO dto, String origen) {
+    private void registrarPago(ConfirmacionPagoDTO dto) {
         Compra compra = repoCompra.bloquear(dto.numeroCompra()).orElse(null);
         if (compra == null) {
             log.warn("La compra {} no existe para la cédula {}", dto.numeroCompra(), dto.cedula());
@@ -71,10 +71,7 @@ public class SrvVerificarPago {
         pago.setCompra(compra);
         pago.setValorPagado(dto.valorPagado());
         pago.setFechaPago(LocalDateTime.now());
-        pago.setOrigen(origen);
         repoPago.save(pago);
-        compra.setEstado(EstadoCompra.PAGADA);
-        repoCompra.save(compra);
         srvDistribuirCompra.distribuir(compra);
     }
 

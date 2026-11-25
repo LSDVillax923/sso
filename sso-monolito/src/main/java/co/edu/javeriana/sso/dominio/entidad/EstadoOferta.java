@@ -1,3 +1,3 @@
 package co.edu.javeriana.sso.dominio.entidad;
 
-public enum EstadoOferta { REGISTRADA, RECHAZADA, GANADORA, PERDEDORA }
+public enum EstadoOferta { REGISTRADA, GANADORA, PERDEDORA }

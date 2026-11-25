@@ -21,7 +21,7 @@ public class CtrlComprasPendientes : Controller
         if (token == null || cedula == null) return Redirect("/");
         try
         {
-            return View("~/Views/PanComprasPendientes/Index.cshtml", await proxy.ObtenerPendientesAsync(cedula, token));
+            return View("~/Views/PanComprasPendientes/Index.cshtml", await proxy.ObtenerPendientesAsync(token));
         }
         catch (HttpRequestException)
         {

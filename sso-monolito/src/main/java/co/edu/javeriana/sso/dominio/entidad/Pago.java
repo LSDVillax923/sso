@@ -22,8 +22,6 @@ public class Pago {
     private Compra compra;
     private BigDecimal valorPagado;
     private LocalDateTime fechaPago;
-    /** AVISO_YOPAGO cuando llega el aviso, CONSULTA_YOPAGO cuando lo encuentra TimerVerificarPago. */
-    private String origen;
 
     public Long getIdPago() { return idPago; }
     public void setIdPago(Long idPago) { this.idPago = idPago; }
@@ -33,6 +31,4 @@ public class Pago {
     public void setValorPagado(BigDecimal valorPagado) { this.valorPagado = valorPagado; }
     public LocalDateTime getFechaPago() { return fechaPago; }
     public void setFechaPago(LocalDateTime fechaPago) { this.fechaPago = fechaPago; }
-    public String getOrigen() { return origen; }
-    public void setOrigen(String origen) { this.origen = origen; }
 }

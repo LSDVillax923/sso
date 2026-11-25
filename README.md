@@ -2,7 +2,7 @@
 
 Sistema de Subastas en Línea de bienes incautados. Grupo 2 · Arquitectura de Software · Javeriana 2026-30 · 2 integrantes.
 
-El SSO es un **monolito Spring Boot 3.5 (Java 21)**, `sso-monolito`, con 2 réplicas detrás de NGINX (PC1), que sirve el SPA en Angular 17 y reparte `/api` entre ellas. YoPago es un **monolito .NET 8**, `YoPago.dll`. Los dos monolitos se comunican por el tópico RabbitMQ `integracion.pagos`. OFAC, SIN y SEN son sistemas aparte, también en Spring Boot. El Active Directory es un OpenLDAP en Docker con los usuarios de `infra/ad/clientes.ldif`; el correo y los SMS salen en el log de `notificar-service`, o por Gmail y un API de SMS reales si se configuran. Los nombres de clases, paquetes, componentes, máquinas y puertos son los mismos del diseño en Visual Paradigm.
+El SSO es un **monolito Spring Boot 3.5 (Java 21)**, `sso-monolito`, con 2 réplicas detrás de NGINX (PC1), que sirve el SPA en Angular 17 y reparte `/api` entre ellas. YoPago es un **monolito .NET 8**, `YoPago.dll`. Los dos monolitos se comunican por el tópico RabbitMQ `integracion.pagos`. OFAC, SIN y SEN son sistemas aparte, también en Spring Boot. El Active Directory es un OpenLDAP en Docker con los usuarios de `infra/ad/clientes.ldif`; el correo y los SMS salen en el log de `notificar-service`, o por Gmail y un API de SMS reales si se configuran.
 
 ## Qué hay en cada carpeta y dónde corre
 
@@ -83,7 +83,7 @@ dotnet publish yopago/YoPago.Web -c Release -o publicado/YoPago.Web
 
 ## Preparar cada máquina
 
-Si ya corrió una versión anterior del proyecto, empiece limpio: borre el contenedor de RabbitMQ (`docker rm -f rabbit`) y vuelva a crearlo, porque las colas cambiaron; y borre `bd_yopago` en SQL Server para que YoPago la cree de nuevo sin columnas viejas.
+Si ya corrió una versión anterior del proyecto, empiece limpio: borre el contenedor de RabbitMQ (`docker rm -f rabbit`) y vuelva a crearlo, porque las colas cambiaron; y borre `bd_yopago` en SQL Server para que YoPago la cree de nuevo sin columnas viejas. Borre también `bd_sso` porque cambiaron sus tablas. Si el usuario `sso` ya existe, vuelva a crear la base con `CREATE DATABASE bd_sso OWNER sso;`. Arranque la réplica 1 para que Hibernate cree las tablas y ejecute la semilla `02-semilla-bd_sso.sql`.
 
 **PC2 · 192.168.1.102**
 ```bash
@@ -222,9 +222,9 @@ El diseño usa HTTPS en la DMZ y LDAPS al AD. Por defecto el código arranca en 
 - **SIN, SEN y notificar-service:** cada `Listener` llama a su `SRB`. SIN y SEN llegan a su base por sus `Repo*`, y el ack a SSO sale por `IntegraAckSIN` / `IntegraAckSEN`.
 - **Web aislada:** PC1 es la DMZ; solo NGINX y `YoPago.Web` reciben tráfico de Internet y todo el negocio queda en PC2.
 
-## Relación con el diseño
+## Organización del código
 
-El diseño (`SSO-Proyecto2-Grupo2.vpp`, 212 clases) y este código tienen las mismas clases y los mismos métodos: las 212 están programadas con los nombres del diagrama. `sso-monolito` va en 9 paquetes (`seguridad`, `catalogo`, `ofertas`, `subastas`, `compras`, `pagos`, `distribucion`, `notificacion`, `dominio`) y `YoPago.dll` en 4 (`Autenticacion`, `Compras`, `Pagos`, `Datos`). Los `WS` son los controladores de entrada. Detalles:
+`sso-monolito` va en 9 paquetes (`seguridad`, `catalogo`, `ofertas`, `subastas`, `compras`, `pagos`, `distribucion`, `notificacion`, `dominio`) y `YoPago.dll` en 4 (`Autenticacion`, `Compras`, `Pagos`, `Datos`). Los `WS` son los controladores de entrada. Detalles:
 
 - Las tres pantallas de YoPago (`PanLoginYoPago`, `PanComprasPendientes`, `PanPagarYoPago`) son vistas Razor en `yopago/YoPago.Web/Views/<Pan…>/`, no archivos `.cs`.
 - En el código hay, además, lo que cualquier aplicación necesita para arrancar y que el diagrama no dibuja: el componente raíz `SSOWebSPA` (el nombre del componente del diagrama).

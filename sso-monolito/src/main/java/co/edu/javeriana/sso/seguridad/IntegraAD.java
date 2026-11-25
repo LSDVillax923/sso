@@ -2,7 +2,6 @@ package co.edu.javeriana.sso.seguridad;
 
 import co.edu.javeriana.sso.dominio.error.ErrorNegocio;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.ldap.CommunicationException;
 import org.springframework.ldap.core.LdapTemplate;
 import org.springframework.ldap.filter.EqualsFilter;
@@ -25,7 +24,7 @@ public class IntegraAD {
         try {
             return ldapTemplate.authenticate(baseUsuarios, new EqualsFilter("uid", usuario).encode(), clave);
         } catch (CommunicationException e) {
-            throw new ErrorNegocio(HttpStatus.SERVICE_UNAVAILABLE, "El servicio de autenticación no está disponible, intente más tarde");
+            throw new ErrorNegocio("El servicio de autenticación no está disponible, intente más tarde");
         }
     }
 }

@@ -28,10 +28,7 @@ export class CtrlMisSubastas {
   iniciarCompra(idOferta: number): void {
     this.proxyCompra.iniciarCompra(idOferta).subscribe({
       // 202: OFAC se verifica por cola; PanEstadoCompra explica que llegará un SMS
-      next: r => {
-        if (this.pan) this.pan.mensaje = r.mensaje;
-        this.router.navigate(['/compra', r.numeroCompra]);
-      },
+      next: r => this.router.navigate(['/compra', r.numeroCompra]),
       error: e => {
         if (sesionVencida(e, this.router)) return;
         if (this.pan) this.pan.mensaje = mensajeDeError(e, 'No se pudo iniciar la compra');

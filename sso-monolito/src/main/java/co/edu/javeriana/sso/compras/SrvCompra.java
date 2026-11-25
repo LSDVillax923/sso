@@ -15,7 +15,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,15 +39,15 @@ public class SrvCompra {
     @Transactional
     public RespuestaCompraDTO iniciarCompra(String cedula, Long idOferta) {
         if (idOferta == null) {
-            throw new ErrorNegocio(HttpStatus.BAD_REQUEST, "Falta el número de la oferta");
+            throw new ErrorNegocio("Falta el número de la oferta");
         }
         Oferta oferta = repoOferta.findById(idOferta)
-                .orElseThrow(() -> new ErrorNegocio(HttpStatus.NOT_FOUND, "La oferta no existe"));
+                .orElseThrow(() -> new ErrorNegocio("La oferta no existe"));
         if (!oferta.getCliente().getCedula().equals(cedula) || oferta.getEstado() != EstadoOferta.GANADORA) {
-            throw new ErrorNegocio(HttpStatus.CONFLICT, "Esta oferta no fue ganada por usted");
+            throw new ErrorNegocio("Esta oferta no fue ganada por usted");
         }
         if (repoCompra.existsByOferta(oferta)) {
-            throw new ErrorNegocio(HttpStatus.CONFLICT, "Ya inició la compra de este bien");
+            throw new ErrorNegocio("Ya inició la compra de este bien");
         }
         BigDecimal total = calcularValorTotal(oferta);
         Compra compra = new Compra();
@@ -73,9 +72,9 @@ public class SrvCompra {
 
     @Transactional(readOnly = true)
     public CompraDTO consultar(String cedula, Long numeroCompra) {
-        Compra c = repoCompra.findByNumeroCompra(numeroCompra)
+        Compra c = repoCompra.findById(numeroCompra)
                 .filter(x -> x.getCliente().getCedula().equals(cedula))
-                .orElseThrow(() -> new ErrorNegocio(HttpStatus.NOT_FOUND, "La compra no existe"));
+                .orElseThrow(() -> new ErrorNegocio("La compra no existe"));
         return new CompraDTO(c.getNumeroCompra(), c.getOferta().getSubasta().getBien().getNombre(), c.getValorOferta(),
                 c.getImpuestos(), c.getValorTotal(), c.getEstado());
     }

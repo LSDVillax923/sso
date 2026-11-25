@@ -17,11 +17,11 @@ public class WSComprasPendientes : ControllerBase
         this.srv = srv;
     }
 
-    [HttpGet("{cedula}")]
-    public ActionResult<List<CompraPendienteYPDTO>> Listar(string cedula)
+    [HttpGet]
+    public ActionResult<List<CompraPendienteYPDTO>> Listar()
     {
         var cedulaToken = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? User.FindFirst("sub")?.Value;
-        if (cedulaToken != cedula) return Forbid();
-        return srv.Listar(cedula);
+        if (cedulaToken == null) return Forbid();
+        return srv.Listar(cedulaToken);
     }
 }

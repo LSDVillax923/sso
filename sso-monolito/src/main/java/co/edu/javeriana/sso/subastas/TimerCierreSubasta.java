@@ -4,7 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-/** Abre las subastas que llegaron a su fecha de inicio y cierra las vencidas. Corre en una sola réplica. */
+/** Cierra las subastas vencidas. Corre en una sola réplica. */
 @Component
 public class TimerCierreSubasta {
 
@@ -17,10 +17,9 @@ public class TimerCierreSubasta {
         this.srvCierreSubasta = srvCierreSubasta;
     }
 
-    @Scheduled(fixedRate = 60000)
+    @Scheduled(fixedDelay = 60000)
     public void ejecutar() {
         if (!activos) return; // C9 s8: los timers solo corren en la réplica 1
-        srvCierreSubasta.abrirSubastasProgramadas();
         srvCierreSubasta.cerrarSubastasVencidas();
     }
 }
