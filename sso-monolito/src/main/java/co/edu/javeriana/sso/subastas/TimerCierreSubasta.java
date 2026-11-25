@@ -1,6 +1,6 @@
 package co.edu.javeriana.sso.subastas;
 
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -9,14 +9,17 @@ import org.springframework.stereotype.Component;
 public class TimerCierreSubasta {
 
     private final SrvCierreSubasta srvCierreSubasta;
+    private final boolean activos;
 
-    public TimerCierreSubasta(SrvCierreSubasta srvCierreSubasta) {
+    public TimerCierreSubasta(SrvCierreSubasta srvCierreSubasta,
+                              @Value("${sso.timers.activos}") boolean activos) {
+        this.activos = activos;
         this.srvCierreSubasta = srvCierreSubasta;
     }
 
     @Scheduled(fixedRate = 60000)
-    @SchedulerLock(name = "TimerCierreSubasta", lockAtMostFor = "PT50S")
     public void ejecutar() {
+        if (!activos) return; // C9 s8: los timers solo corren en la réplica 1
         srvCierreSubasta.abrirSubastasProgramadas();
         srvCierreSubasta.cerrarSubastasVencidas();
     }
