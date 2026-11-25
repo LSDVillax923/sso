@@ -1,3 +1,3 @@
 namespace YoPago.Pagos;
 
-public record PagoYPDTO(long NumeroCompra, decimal Valor, string MedioPago);
+public record PagoYPDTO(long NumeroCompra);

@@ -2,7 +2,6 @@ package co.edu.javeriana.sen.integra;
 
 import co.edu.javeriana.sen.config.ConfigRabbitSEN;
 import co.edu.javeriana.sen.dto.DTOAckSEN;
-import java.time.LocalDateTime;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -19,7 +18,7 @@ public class IntegraAckSEN {
     }
 
     public void enviarAck(Long numeroCompra) {
-        DTOAckSEN ack = new DTOAckSEN(numeroCompra, "SEN", LocalDateTime.now());
+        DTOAckSEN ack = new DTOAckSEN(numeroCompra, "SEN");
         Runnable envio = () -> rabbitTemplate.convertAndSend(ConfigRabbitSEN.EXCHANGE, ConfigRabbitSEN.SSO_ACK, ack);
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

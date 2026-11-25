@@ -7,7 +7,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "item_carrito")
@@ -22,7 +21,6 @@ public class ItemCarrito {
     @ManyToOne(optional = false)
     @JoinColumn(name = "id_subasta")
     private Subasta subasta;
-    private LocalDateTime fechaAgregado;
 
     public Long getIdItem() { return idItem; }
     public void setIdItem(Long idItem) { this.idItem = idItem; }
@@ -30,6 +28,4 @@ public class ItemCarrito {
     public void setCarrito(CarritoSubasta carrito) { this.carrito = carrito; }
     public Subasta getSubasta() { return subasta; }
     public void setSubasta(Subasta subasta) { this.subasta = subasta; }
-    public LocalDateTime getFechaAgregado() { return fechaAgregado; }
-    public void setFechaAgregado(LocalDateTime fechaAgregado) { this.fechaAgregado = fechaAgregado; }
 }

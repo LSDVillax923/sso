@@ -32,16 +32,11 @@ public class UtilJWT {
                 .compact();
     }
 
-    public boolean validar(String token) {
-        try {
-            Jwts.parser().verifyWith(clave).build().parseSignedClaims(token);
-            return true;
-        } catch (JwtException | IllegalArgumentException e) {
-            return false;
-        }
-    }
-
     public String obtenerCedula(String token) {
-        return Jwts.parser().verifyWith(clave).build().parseSignedClaims(token).getPayload().getSubject();
+        try {
+            return Jwts.parser().verifyWith(clave).build().parseSignedClaims(token).getPayload().getSubject();
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
+        }
     }
 }

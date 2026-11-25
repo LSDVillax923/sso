@@ -7,9 +7,7 @@ import { CtrlEstadoCompra } from './ctrl-estado-compra';
 const EXPLICACION: Record<EstadoCompra, string> = {
   VERIFICANDO_OFAC: 'Estamos validando su identidad. Le llegará un SMS cuando pueda pagar.',
   RECHAZADA_OFAC: 'No es posible continuar: su identificación no está habilitada para compras.',
-  APROBADA_OFAC: 'Su identidad fue validada. En un momento la compra queda lista para pagar.',
   PENDIENTE_PAGO: 'Pague en YoPago con el enlace que le llegó por SMS.',
-  PAGADA: 'Pago recibido. Estamos programando el envío.',
   DISTRIBUIDA: 'Enviamos la compra a inventarios y envíos; esperamos su confirmación.',
   TERMINADA: 'Compra realizada. El envío quedó programado a su dirección registrada.'
 };

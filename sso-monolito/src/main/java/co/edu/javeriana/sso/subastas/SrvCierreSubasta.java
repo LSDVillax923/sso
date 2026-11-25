@@ -34,12 +34,6 @@ public class SrvCierreSubasta {
     }
 
     @Transactional
-    public void abrirSubastasProgramadas() {
-        repoSubasta.findByEstadoAndFechaInicioBefore(EstadoSubasta.PROGRAMADA, LocalDateTime.now())
-                .forEach(s -> s.setEstado(EstadoSubasta.ABIERTA));
-    }
-
-    @Transactional
     public void cerrarSubastasVencidas() {
         for (Subasta subasta : repoSubasta.findByEstadoAndFechaCierreBefore(EstadoSubasta.ABIERTA, LocalDateTime.now())) {
             Optional<Oferta> ganadora = determinarGanador(subasta);

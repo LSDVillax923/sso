@@ -12,12 +12,6 @@
     <input type="hidden" name="NumeroCompra" value="@Model.NumeroCompra" />
     <input type="hidden" name="Valor" value="@Model.Valor" />
     <p class="valor">$ @Model.Valor.ToString("N2")</p>
-    <label>Medio de pago
-        <select name="MedioPago">
-            <option value="PSE">PSE</option>
-            <option value="TARJETA">Tarjeta de crédito</option>
-        </select>
-    </label>
     <button type="submit">Confirmar pago</button>
 </form>
 <p><a href="/compras">Volver a mis compras</a></p>

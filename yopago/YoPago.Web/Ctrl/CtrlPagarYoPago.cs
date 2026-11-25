@@ -21,7 +21,7 @@ public class CtrlPagarYoPago : Controller
         var token = HttpContext.Session.GetString("token");
         var cedula = HttpContext.Session.GetString("cedula");
         if (token == null || cedula == null) return Redirect("/");
-        var compra = (await proxy.ObtenerPendientesAsync(cedula, token)).FirstOrDefault(c => c.NumeroCompra == numeroCompra);
+        var compra = (await proxy.ObtenerPendientesAsync(token)).FirstOrDefault(c => c.NumeroCompra == numeroCompra);
         if (compra == null) return Redirect("/compras");
         return View("~/Views/PanPagarYoPago/Pagar.cshtml", new PagoVM { NumeroCompra = compra.NumeroCompra, Valor = compra.Valor });
     }

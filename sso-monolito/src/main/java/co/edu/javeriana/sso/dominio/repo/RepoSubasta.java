@@ -19,11 +19,5 @@ public interface RepoSubasta extends JpaRepository<Subasta, Long> {
     List<Subasta> buscarPorEstado(@Param("estado") EstadoSubasta estado, @Param("filtro") String filtro,
                                   @Param("ahora") LocalDateTime ahora);
 
-    default List<Subasta> buscarAbiertas(String filtro, LocalDateTime ahora) {
-        return buscarPorEstado(EstadoSubasta.ABIERTA, filtro == null ? "" : filtro.trim(), ahora);
-    }
-
     List<Subasta> findByEstadoAndFechaCierreBefore(EstadoSubasta estado, LocalDateTime fecha);
-
-    List<Subasta> findByEstadoAndFechaInicioBefore(EstadoSubasta estado, LocalDateTime fecha);
 }

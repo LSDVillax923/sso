@@ -35,13 +35,11 @@ public class Compra {
     private EstadoCompra estado;
     private int intentosOFAC;
     private LocalDateTime proximoIntento;
-    private LocalDateTime fechaCreacion;
     private LocalDateTime fechaActualizacion;
 
     @PrePersist
     void alCrear() {
-        fechaCreacion = LocalDateTime.now();
-        fechaActualizacion = fechaCreacion;
+        fechaActualizacion = LocalDateTime.now();
     }
 
     @PreUpdate
@@ -67,8 +65,6 @@ public class Compra {
     public void setIntentosOFAC(int intentosOFAC) { this.intentosOFAC = intentosOFAC; }
     public LocalDateTime getProximoIntento() { return proximoIntento; }
     public void setProximoIntento(LocalDateTime proximoIntento) { this.proximoIntento = proximoIntento; }
-    public LocalDateTime getFechaCreacion() { return fechaCreacion; }
-    public void setFechaCreacion(LocalDateTime fechaCreacion) { this.fechaCreacion = fechaCreacion; }
     public LocalDateTime getFechaActualizacion() { return fechaActualizacion; }
     public void setFechaActualizacion(LocalDateTime fechaActualizacion) { this.fechaActualizacion = fechaActualizacion; }
 }

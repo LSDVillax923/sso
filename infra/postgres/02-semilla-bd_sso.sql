@@ -7,10 +7,10 @@ INSERT INTO cliente (cedula, usuario_ad, nombre, email, celular, direccion) VALU
   ('9999', 'reportado', 'Cliente reportado OFAC',   'reportado@correo.com', '3009990000', 'Calle 1 # 1-10, Bogotá')
 ON CONFLICT (cedula) DO NOTHING;
 
-INSERT INTO bien (nombre, descripcion, categoria, valor_minimo, imagen_url) VALUES
-  ('Camioneta Toyota Prado 2019', 'Vehículo incautado, 80.000 km',        'Vehículos', 120000000, NULL),
-  ('Apartamento 70 m2 Chapinero', 'Inmueble incautado, 3 habitaciones',   'Inmuebles', 450000000, NULL),
-  ('Reloj Rolex Submariner',      'Joya incautada con certificado',       'Joyas',      35000000, NULL);
+INSERT INTO bien (nombre, descripcion, valor_minimo) VALUES
+  ('Camioneta Toyota Prado 2019', 'Vehículo incautado, 80.000 km', 120000000),
+  ('Apartamento 70 m2 Chapinero', 'Inmueble incautado, 3 habitaciones', 450000000),
+  ('Reloj Rolex Submariner',      'Joya incautada con certificado', 35000000);
 
 -- Subastas abiertas por 30 minutos. Para cerrarlas ya:  UPDATE subasta SET fecha_cierre = NOW();
 INSERT INTO subasta (id_bien, fecha_inicio, fecha_cierre, estado)

@@ -21,7 +21,7 @@ public class SrvOFAC {
     @Transactional(readOnly = true)
     public RespuestaOFAC validar(String cedula) {
         ResultadoOFAC resultado;
-        if (repoPersonaReportada.existsByCedula(cedula)) {
+        if (repoPersonaReportada.existsById(cedula)) {
             resultado = ResultadoOFAC.RECHAZADO;
         } else if (repoSolicitudOFAC.existsByCedulaAndEstado(cedula, "EN_REVISION")) {
             resultado = ResultadoOFAC.ENPROCESO;

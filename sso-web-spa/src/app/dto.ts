@@ -7,7 +7,6 @@ export interface LoginDTO {
 
 export interface TokenDTO {
   token: string;
-  cedula: string;
   nombre: string;
 }
 
@@ -43,10 +42,10 @@ export interface RespuestaOfertaDTO {
   rechazadas: Record<string, string>;
 }
 
-export type EstadoOferta = 'REGISTRADA' | 'RECHAZADA' | 'GANADORA' | 'PERDEDORA';
+export type EstadoOferta = 'REGISTRADA' | 'GANADORA' | 'PERDEDORA';
 
-export type EstadoCompra = 'VERIFICANDO_OFAC' | 'RECHAZADA_OFAC' | 'APROBADA_OFAC' | 'PENDIENTE_PAGO'
-  | 'PAGADA' | 'DISTRIBUIDA' | 'TERMINADA';
+export type EstadoCompra = 'VERIFICANDO_OFAC' | 'RECHAZADA_OFAC' | 'PENDIENTE_PAGO'
+  | 'DISTRIBUIDA' | 'TERMINADA';
 
 export interface OfertaDTO {
   idOferta: number;

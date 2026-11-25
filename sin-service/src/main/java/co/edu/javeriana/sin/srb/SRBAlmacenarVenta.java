@@ -45,7 +45,7 @@ public class SRBAlmacenarVenta {
     }
 
     private void descontar(Long idBien, String descripcion, int cantidad) {
-        ItemInventario item = repoInventario.findByIdBien(idBien).orElseGet(() -> {
+        ItemInventario item = repoInventario.findById(idBien).orElseGet(() -> {
             ItemInventario nuevo = new ItemInventario();
             nuevo.setIdBien(idBien);
             nuevo.setDescripcion(descripcion);

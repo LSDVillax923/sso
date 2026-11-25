@@ -28,8 +28,9 @@ public class FiltroJWT extends OncePerRequestFilter {
         String cabecera = req.getHeader(HttpHeaders.AUTHORIZATION);
         if (cabecera != null && cabecera.startsWith("Bearer ")) {
             String token = cabecera.substring(7);
-            if (utilJWT.validar(token)) {
-                var autenticacion = new UsernamePasswordAuthenticationToken(utilJWT.obtenerCedula(token), null, List.of());
+            String cedula = utilJWT.obtenerCedula(token);
+            if (cedula != null) {
+                var autenticacion = new UsernamePasswordAuthenticationToken(cedula, null, List.of());
                 SecurityContextHolder.getContext().setAuthentication(autenticacion);
             }
         }
