@@ -33,13 +33,10 @@ spring:
     password: ${AD_PASS:admin}
 
 sso:
-  # nombre de esta réplica; la réplica 2 en Docker arranca con REPLICA=sso-monolito-2
-  replica: ${REPLICA:sso-monolito-1}
   jwt:
     secreto: ${JWT_SECRETO:cambie-este-secreto-compartido-de-32-caracteres-o-mas}
     expiracion-min: 60
   ad:
-    habilitado: ${AD_HABILITADO:true}
     base-usuarios: ou=clientes
   url-front: ${URL_FRONT:http://192.168.1.101}
   impuestos:
@@ -54,9 +51,6 @@ sso:
   yopago:
     url-pago: ${YOPAGO_URL_PAGO:http://192.168.1.101:5001}
   pagos:
-    espera-min: 10
-    revision-ms: 600000
-  ack:
     espera-min: 10
     revision-ms: 600000
 

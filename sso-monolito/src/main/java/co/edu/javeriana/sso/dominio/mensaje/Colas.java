@@ -14,13 +14,12 @@ import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 
 /**
- * Nombres de RabbitMQ. Exchange sso.eventos (direct): colas internas del SSO, cada una con su .dlq.
+ * Nombres de RabbitMQ. Exchange sso.eventos (direct): colas internas del SSO.
  * Tópico integracion.pagos: une el monolito Spring Boot con el monolito .NET de YoPago.
  */
 public final class Colas {
 
     public static final String EXCHANGE = "sso.eventos";
-    public static final String DLX = "sso.dlx";
     public static final String COMPRAS_OFAC = "compras.ofac";
     public static final String NOTIF_CORREO = "notif.correo";
     public static final String NOTIF_SMS = "notif.sms";
@@ -43,16 +42,11 @@ public final class Colas {
     public static Declarables declarar(String... colas) {
         List<Declarable> d = new ArrayList<>();
         DirectExchange exchange = new DirectExchange(EXCHANGE, true, false);
-        DirectExchange dlx = new DirectExchange(DLX, true, false);
         d.add(exchange);
-        d.add(dlx);
         for (String nombre : colas) {
-            Queue cola = QueueBuilder.durable(nombre).deadLetterExchange(DLX).deadLetterRoutingKey(nombre + ".dlq").build();
-            Queue dlq = QueueBuilder.durable(nombre + ".dlq").build();
+            Queue cola = new Queue(nombre, true);
             d.add(cola);
-            d.add(dlq);
             d.add(BindingBuilder.bind(cola).to(exchange).with(nombre));
-            d.add(BindingBuilder.bind(dlq).to(dlx).with(nombre + ".dlq"));
         }
         return new Declarables(d);
     }

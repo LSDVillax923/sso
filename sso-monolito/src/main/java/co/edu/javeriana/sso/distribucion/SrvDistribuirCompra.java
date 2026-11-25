@@ -6,7 +6,6 @@ import co.edu.javeriana.sso.dominio.entidad.Bien;
 import co.edu.javeriana.sso.dominio.entidad.Cliente;
 import co.edu.javeriana.sso.dominio.entidad.Compra;
 import co.edu.javeriana.sso.dominio.entidad.EstadoCompra;
-import co.edu.javeriana.sso.dominio.entidad.SistemaDestino;
 import co.edu.javeriana.sso.dominio.repo.RepoCompra;
 import co.edu.javeriana.sso.dominio.mensaje.MsgEnvioSEN;
 import co.edu.javeriana.sso.dominio.mensaje.MsgVentaSIN;
@@ -34,14 +33,6 @@ public class SrvDistribuirCompra {
         integraSEN.enviarEnvio(envioDe(compra));
         compra.setEstado(EstadoCompra.DISTRIBUIDA);
         repoCompra.save(compra);
-    }
-
-    public void reenviar(Compra compra, SistemaDestino sistema) {
-        if (sistema == SistemaDestino.SIN) {
-            integraSIN.enviarVenta(ventaDe(compra));
-        } else {
-            integraSEN.enviarEnvio(envioDe(compra));
-        }
     }
 
     private MsgVentaSIN ventaDe(Compra compra) {

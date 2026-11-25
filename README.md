@@ -26,7 +26,7 @@ Infraestructura:
 |---|---|---|
 | PC1 | PostgreSQL `bd_ofac` en Docker | 5433 |
 | PC2 | SQL Server Express `bd_yopago` | 1433 |
-| PC2 | PostgreSQL con `bd_sso` y `bd_notificaciones` (bases y usuarios distintos) | 5432 |
+| PC2 | PostgreSQL con `bd_sso` | 5432 |
 | PC2 | PostgreSQL `bd_sin` en Docker (contenedor propio) | 5434 |
 | PC2 | PostgreSQL `bd_sen` en Docker (contenedor propio) | 5435 |
 | PC2 | RabbitMQ en Docker: exchange `sso.eventos` y tópico `integracion.pagos` | 5672 · 15672 |
@@ -83,10 +83,11 @@ dotnet publish yopago/YoPago.Web -c Release -o publicado/YoPago.Web
 
 ## Preparar cada máquina
 
+Si ya corrió una versión anterior del proyecto, empiece limpio: borre el contenedor de RabbitMQ (`docker rm -f rabbit`) y vuelva a crearlo, porque las colas cambiaron; y borre `bd_yopago` en SQL Server para que YoPago la cree de nuevo sin columnas viejas.
+
 **PC2 · 192.168.1.102**
 ```bash
 psql -U postgres -f infra/postgres/01-crear-bd_sso.sql
-psql -U postgres -f infra/postgres/05-crear-bd_notificaciones.sql
 docker run -d --name bd-sin -p 5434:5432 -e POSTGRES_DB=bd_sin -e POSTGRES_USER=sin -e POSTGRES_PASSWORD=sin postgres:16
 docker run -d --name bd-sen -p 5435:5432 -e POSTGRES_DB=bd_sen -e POSTGRES_USER=sen -e POSTGRES_PASSWORD=sen postgres:16
 docker run -d --name rabbit -p 5672:5672 -p 15672:15672 -e RABBITMQ_DEFAULT_USER=sso -e RABBITMQ_DEFAULT_PASS=sso rabbitmq:3.13-management
@@ -139,14 +140,13 @@ docker run -d --name ofac -p 8091:8091 -e BD_OFAC_URL=jdbc:postgresql://192.168.
 ```bash
 # PC2
 cd sso-monolito && docker build -t sso-monolito .
-docker run -d --name sso2 -p 8081:8080 -e REPLICA=sso-monolito-2 -e TIMERS_ACTIVOS=false -e OFAC_URL=http://192.168.1.101:8091/api/ofac/clientes/ -e RABBIT_HOST=192.168.1.102 -e BD_SSO_URL=jdbc:postgresql://192.168.1.102:5432/bd_sso -e AD_URL=ldap://192.168.1.102:389 sso-monolito
+docker run -d --name sso2 -p 8081:8080 -e TIMERS_ACTIVOS=false -e OFAC_URL=http://192.168.1.101:8091/api/ofac/clientes/ -e RABBIT_HOST=192.168.1.102 -e BD_SSO_URL=jdbc:postgresql://192.168.1.102:5432/bd_sso -e AD_URL=ldap://192.168.1.102:389 sso-monolito
 ```
 
 Prueba de comunicación entre los dos contenedores:
 ```bash
 docker exec sso2 curl -i http://192.168.1.101:8091/api/ofac/clientes/1010
 ```
-La cabecera `X-Atendido-Por: ofac-service` la pone `APIRestOFAC`, el boundary de entrada de OFAC.
 
 ## Cómo se hablan los dos monolitos
 
@@ -158,7 +158,7 @@ Tópico `integracion.pagos` (colas durables, mensajes JSON persistentes):
 | `pago.consulta` | `yopago.consultas` | `PublicadorPagos` (Java) | `ListenerConsultaPago` (.NET) | número de compra |
 | `pago.confirmado` | `sso.pagos.confirmados` | `PublicadorPagoSSO` (.NET) | `ListenerPagoConfirmado` (Java) | cédula, número de compra y valor pagado |
 
-Dentro del SSO, el exchange `sso.eventos` lleva `compras.ofac`, `notif.correo`, `notif.sms`, `sin.ventas`, `sen.envios` y `sso.ack`, cada una con su `.dlq`.
+Dentro del SSO, el exchange `sso.eventos` lleva `compras.ofac`, `notif.correo`, `notif.sms`, `sin.ventas`, `sen.envios` y `sso.ack`.
 
 ## Datos de prueba
 
@@ -173,8 +173,6 @@ Correos y SMS, dos formas:
 
 1. **Sin nada más** (por defecto): salen en el log de `notificar-service` como `[CORREO SIMULADO]` y `[SMS SIMULADO]`.
 2. **De verdad:** `CORREO_SIMULADO=false` con `SMTP_HOST=smtp.gmail.com`, `SMTP_USER` y `SMTP_PASS` (clave de aplicación de Gmail), y `SMS_URL` / `SMS_API_KEY` con el API del proveedor.
-
-Sin el AD levantado se puede probar con `AD_HABILITADO=false` en `sso-monolito` (acepta cualquier clave de un cliente registrado). Úselo solo para desarrollo.
 
 ## Probar el flujo completo
 
@@ -201,7 +199,7 @@ CU5 publica `pago.pendiente`; en la consola de RabbitMQ se ve el mensaje pasar p
 curl -s $API/compras/1 -H "Authorization: Bearer $TOKEN"
 ```
 
-Para ver el balanceo, repita una petición con `curl -i`: la cabecera `X-Atendido-Por` dice qué réplica respondió (`sso-monolito-1` o `sso-monolito-2`), porque la pone `APIRestSSO`, el boundary de entrada del monolito. Si detiene una réplica (`docker stop sso2`), NGINX sigue respondiendo con la otra.
+Para ver el balanceo, mire las peticiones en `docker logs -f nginx` (L09 s13). Si detiene una réplica (`docker stop sso2`), NGINX sigue respondiendo con la otra.
 
 ## HTTPS y LDAPS
 
@@ -212,21 +210,21 @@ El diseño usa HTTPS en la DMZ y LDAPS al AD. Por defecto el código arranca en 
 
 ## Cómo se cumplen las reglas del enunciado
 
-- **Pantalla → controlador → proxy → WS:** en el SPA cada pantalla `Pan*` (componente Angular) le pasa el evento a su `Ctrl*`, que llama al `Proxy*`; el proxy va a NGINX → `APIRestSSO` → `WS*`, e `InterceptorJWT` le pone el token. El `Ctrl*` le devuelve el resultado a la pantalla (`mostrarBienes`, `mostrarItems`, `mostrarEstado`…).
+- **Pantalla → controlador → proxy → WS:** en el SPA cada pantalla `Pan*` (componente Angular) le pasa el evento a su `Ctrl*`, que llama al `Proxy*`; el proxy va a NGINX → `WS*`, e `InterceptorJWT` le pone el token. El `Ctrl*` le devuelve el resultado a la pantalla (`mostrarBienes`, `mostrarItems`, `mostrarEstado`…).
 - **Sin lógica de negocio en el front:** NGINX sirve el SPA y balancea las peticiones. El SPA muestra las pantallas. `YoPago.Web` muestra las pantallas y llama a `YoPago.dll`. En .NET, cada pantalla (vista Razor en `Views/Pan*`) tiene su controlador `Ctrl*` que usa `ProxyYoPagoAPI`, y el proxy llega a los `WS` de `YoPago.dll`. Fechas, valor mínimo, ganador, OFAC, impuestos y pago se validan en los `Srv*`.
-- **Entrada a cada servidor:** la petición entra por un boundary (`APIRestSSO` en `sso-monolito`, `APIRestYP` en `YoPago.dll`, `APIRestOFAC` en OFAC) que la marca y la entrega al `WS`, que es un controlador.
+- **Entrada a cada servidor:** la petición entra directo al WS de cada servidor, que es un controlador (L03).
 - **Presentación y negocio en máquinas separadas:** Java en PC1 (NGINX) y PC2 (`sso-monolito`). .NET en PC1 (`YoPago.Web`) y PC2 (`YoPago.dll`).
 - **Balanceo del servicio de compra:** NGINX reparte `/api/` con `least_conn` entre las 2 réplicas (upstream en `infra/nginx/default.conf`). Las réplicas no guardan sesión (JWT) y compiten por las colas. Los timers corren solo en la réplica 1 (`sso.timers.activos`). La réplica 2 arranca con `TIMERS_ACTIVOS=false` (C9 s8).
-- **Caídas de red y OFAC:** timeout de 5 s y 3 reintentos con WebClient (`IntegraOFAC`, L07), `TimerReintentoOFAC` cada 5 min, aviso por SMS a los 6 intentos; `TimerVerificarPago` publica `pago.consulta` si no llega la confirmación; `TimerAckPendiente` si SIN o SEN no confirman; `TimerReintentoNotificacion` en YoPago si RabbitMQ estaba caído.
+- **Caídas de red y OFAC:** timeout de 5 s y 3 reintentos con WebClient (`IntegraOFAC`, L07), `TimerReintentoOFAC` cada 5 min, aviso por SMS a los 6 intentos. Si SIN o SEN están caídos, la venta y el envío esperan en su cola durable. Si RabbitMQ estaba caído cuando YoPago cobró, `TimerVerificarPago` publica `pago.consulta` y YoPago vuelve a publicar la confirmación.
 - **Nodos de SIN y SEN:** cada servicio corre en su propio contenedor (nodo) con su propia base de datos en otro contenedor.
-- **BD separadas:** bd_sso, bd_yopago, bd_ofac, bd_sin, bd_sen y bd_notificaciones. Ningún sistema se conecta a la BD de otro.
-- **A cada BD solo se llega por su repositorio (Repository = integrador de BD, L03):** en `sso-monolito` los `Srv` usan `RepoCliente`, `RepoSubasta`, `RepoCarrito`, `RepoOferta`, `RepoCompra`, `RepoPago` y `RepoAckCompra` (paquete `dominio.repo`); OFAC usa `RepoPersonaReportada`, `RepoSolicitudOFAC` y `RepoConsultaOFAC`; SIN usa `RepoVentaRecibida` y `RepoInventario`; SEN usa `RepoEnvio`; YoPago usa `IntegraBDUsuarioYP`, `IntegraBDCompraPendiente` e `IntegraBDPagoYP`, que son su repositorio sobre el DbContext de EF Core (N02).
-- **SIN, SEN y notificar-service:** cada `Listener` llama a su `SRB`. SIN y SEN llegan a su base por sus `Repo*`, y el ack a SSO sale por `IntegraAckSIN` / `IntegraAckSEN`. `notificar-service` sigue usando `IntegraBDNotificaciones`.
+- **BD separadas:** bd_sso, bd_yopago, bd_ofac, bd_sin y bd_sen. Ningún sistema se conecta a la BD de otro.
+- **A cada BD solo se llega por su repositorio (Repository = integrador de BD, L03):** en `sso-monolito` los `Srv` usan `RepoCliente`, `RepoSubasta`, `RepoCarrito`, `RepoOferta`, `RepoCompra`, `RepoPago` y `RepoAckCompra` (paquete `dominio.repo`); OFAC usa `RepoPersonaReportada` y `RepoSolicitudOFAC`; SIN usa `RepoVentaRecibida` y `RepoInventario`; SEN usa `RepoEnvio`; YoPago usa `IntegraBDUsuarioYP`, `IntegraBDCompraPendiente` e `IntegraBDPagoYP`, que son su repositorio sobre el DbContext de EF Core (N02).
+- **SIN, SEN y notificar-service:** cada `Listener` llama a su `SRB`. SIN y SEN llegan a su base por sus `Repo*`, y el ack a SSO sale por `IntegraAckSIN` / `IntegraAckSEN`.
 - **Web aislada:** PC1 es la DMZ; solo NGINX y `YoPago.Web` reciben tráfico de Internet y todo el negocio queda en PC2.
 
 ## Relación con el diseño
 
-El diseño (`SSO-Proyecto2-Grupo2.vpp`, 212 clases) y este código tienen las mismas clases y los mismos métodos: las 212 están programadas con los nombres del diagrama. `sso-monolito` va en 10 paquetes (`entrada`, `seguridad`, `catalogo`, `ofertas`, `subastas`, `compras`, `pagos`, `distribucion`, `notificacion`, `dominio`) y `YoPago.dll` en 5 (`Entrada`, `Autenticacion`, `Compras`, `Pagos`, `Datos`). Los `WS` son controladores y cada servidor recibe por su boundary `APIRest`. Detalles:
+El diseño (`SSO-Proyecto2-Grupo2.vpp`, 212 clases) y este código tienen las mismas clases y los mismos métodos: las 212 están programadas con los nombres del diagrama. `sso-monolito` va en 9 paquetes (`seguridad`, `catalogo`, `ofertas`, `subastas`, `compras`, `pagos`, `distribucion`, `notificacion`, `dominio`) y `YoPago.dll` en 4 (`Autenticacion`, `Compras`, `Pagos`, `Datos`). Los `WS` son los controladores de entrada. Detalles:
 
 - Las tres pantallas de YoPago (`PanLoginYoPago`, `PanComprasPendientes`, `PanPagarYoPago`) son vistas Razor en `yopago/YoPago.Web/Views/<Pan…>/`, no archivos `.cs`.
 - En el código hay, además, lo que cualquier aplicación necesita para arrancar y que el diagrama no dibuja: el componente raíz `SSOWebSPA` (el nombre del componente del diagrama).

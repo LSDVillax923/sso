@@ -5,7 +5,6 @@ using Microsoft.IdentityModel.Tokens;
 using YoPago.Autenticacion;
 using YoPago.Compras;
 using YoPago.Datos;
-using YoPago.Entrada;
 using YoPago.Pagos;
 
 namespace YoPago;
@@ -30,7 +29,6 @@ public class ProgramYoPagoApi
         builder.Services.AddSingleton<PublicadorPagoSSO>();
         builder.Services.AddHostedService<ListenerComprasSSO>();
         builder.Services.AddHostedService<ListenerConsultaPago>();
-        builder.Services.AddHostedService<TimerReintentoNotificacion>();
 
         var clave = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(cfg["Jwt:Clave"]!));
         builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -52,7 +50,6 @@ public class ProgramYoPagoApi
             scope.ServiceProvider.GetRequiredService<YoPagoDbContext>().Database.EnsureCreated();
         }
 
-        app.UseMiddleware<APIRestYP>();
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
