@@ -2,7 +2,7 @@
 
 Sistema de Subastas en Línea de bienes incautados. Grupo 2 · Arquitectura de Software · Javeriana 2026-30 · 2 integrantes.
 
-El SSO es un **monolito Spring Boot 3.5 (Java 21)**, `sso-monolito`, con 2 réplicas detrás de NGINX (PC1), que sirve el SPA en Angular 17 y reparte `/api` entre ellas. YoPago es un **monolito .NET 8**, `YoPago.dll`. Los dos monolitos se comunican por el tópico RabbitMQ `integracion.pagos`. OFAC, SIN y SEN son sistemas aparte, también en Spring Boot. Los sistemas externos (Active Directory, servidor de correo y gateway SMS) vienen como simuladores con las mismas clases del diseño, para correr los 7 CU sin Gmail ni Twilio. Los nombres de clases, paquetes, componentes, máquinas y puertos son los mismos del diseño en Visual Paradigm.
+El SSO es un **monolito Spring Boot 3.5 (Java 21)**, `sso-monolito`, con 2 réplicas detrás de NGINX (PC1), que sirve el SPA en Angular 17 y reparte `/api` entre ellas. YoPago es un **monolito .NET 8**, `YoPago.dll`. Los dos monolitos se comunican por el tópico RabbitMQ `integracion.pagos`. OFAC, SIN y SEN son sistemas aparte, también en Spring Boot. El Active Directory es un OpenLDAP en Docker con los usuarios de `infra/ad/clientes.ldif`; el correo y los SMS salen en el log de `notificar-service`, o por Gmail y un API de SMS reales si se configuran. Los nombres de clases, paquetes, componentes, máquinas y puertos son los mismos del diseño en Visual Paradigm.
 
 ## Qué hay en cada carpeta y dónde corre
 
@@ -18,10 +18,7 @@ El SSO es un **monolito Spring Boot 3.5 (Java 21)**, `sso-monolito`, con 2 répl
 | `sin-service` | `sin-service.jar` | PC2 · 192.168.1.102 · Docker (nodo propio) | 8092 | `docker run ... sin-service` |
 | `sen-service` | `sen-service.jar` | PC2 · 192.168.1.102 · Docker (nodo propio) | 8093 | `docker run ... sen-service` |
 | `notificar-service` | `notificar-service.jar` (correo y SMS) | PC2 · 192.168.1.102 | 8094 | `java -jar notificar-service.jar` |
-| `ad-service` | `ad-service.jar`: **Active Directory** simulado (`ListenerLDAPS` → `SRBAutenticacionLDAP` → `IntegraDirectorio`) | PC2 · 192.168.1.102 · Docker | 389 · 636 | `docker run ... ad-service` |
-| `correo-service` | `correo-service.jar`: **servidor de correo** externo simulado (`ListenerSMTP` → `SRBEntregarCorreo` → `IntegraBuzon`) | externo (cualquier PC) | SMTP 587 · buzón web 8095 | `java -jar correo-service.jar` |
-| `gateway-sms` | `gateway-sms.jar`: **gateway SMS** externo simulado (`ListenerGatewaySMS` → `SRBDespacharSMS` → `IntegraOperadorMovil`) | externo (cualquier PC) | 8096 | `java -jar gateway-sms.jar` |
-| `infra` | scripts de BD y usuarios del AD | PC2 | — | ver abajo |
+| `infra` | scripts de BD, LDIF del AD y configuración de NGINX | PC2 | — | ver abajo |
 
 Infraestructura:
 
@@ -33,8 +30,7 @@ Infraestructura:
 | PC2 | PostgreSQL `bd_sin` en Docker (contenedor propio) | 5434 |
 | PC2 | PostgreSQL `bd_sen` en Docker (contenedor propio) | 5435 |
 | PC2 | RabbitMQ en Docker: exchange `sso.eventos` y tópico `integracion.pagos` | 5672 · 15672 |
-| PC2 | Active Directory: `ad-service` en Docker (o un contenedor OpenLDAP con el mismo LDIF; use uno de los dos) | 389 · 636 |
-| externo | `bd_correo` y `bd_sms`: bases H2 en archivo de los simuladores (`./datos/`) | — |
+| PC2 | Active Directory: OpenLDAP en Docker con `infra/ad/clientes.ldif` | 389 · 636 |
 
 PC1 (DMZ) tiene solo las presentaciones (NGINX y `YoPago.Web`) y PC2 (red interna) tiene los negocios (`sso-monolito` y `YoPago.dll`). Así, la presentación y el negocio quedan en máquinas distintas tanto en Java como en .NET, y desde Internet solo se entra a PC1.
 
@@ -49,7 +45,7 @@ Las IP son de ejemplo. Corra `ipconfig` en cada PC y cámbielas con variables de
 | NGINX (PC1) | PC2:8080, PC2:8081 | réplicas del monolito |
 | `YoPago.Web` (PC1) | PC2:5002 | su monolito .NET |
 | `sso-monolito` (PC2) | PC1:8091 | OFAC |
-| `notificar-service` (PC2) | correo:587, gateway:8096 | simuladores de correo y SMS, si corren en otra máquina |
+| `notificar-service` (PC2) | SMTP y API de SMS | solo si se usan Gmail y un proveedor de SMS reales |
 
 En Windows (PowerShell como administrador):
 ```powershell
@@ -75,7 +71,7 @@ cd sso-web-spa && npm install && npm run build && cd ..
 ```
 
 ```bash
-# Java: desde esta carpeta compila los 8 módulos, corre sus pruebas y deja cada .jar en <módulo>/target/
+# Java: desde esta carpeta compila los 5 módulos y deja cada .jar en <módulo>/target/
 mvn package
 ```
 
@@ -94,12 +90,7 @@ psql -U postgres -f infra/postgres/05-crear-bd_notificaciones.sql
 docker run -d --name bd-sin -p 5434:5432 -e POSTGRES_DB=bd_sin -e POSTGRES_USER=sin -e POSTGRES_PASSWORD=sin postgres:16
 docker run -d --name bd-sen -p 5435:5432 -e POSTGRES_DB=bd_sen -e POSTGRES_USER=sen -e POSTGRES_PASSWORD=sen postgres:16
 docker run -d --name rabbit -p 5672:5672 -p 15672:15672 -e RABBITMQ_DEFAULT_USER=sso -e RABBITMQ_DEFAULT_PASS=sso rabbitmq:3.13-management
-# Active Directory: el simulador del diseño (lee infra/ad/clientes.ldif como bd_directorio)
-cd ad-service && docker build -t ad-service . && cd ..
-docker run -d --name ad -p 389:389 -p 636:636 ad-service
-```
-En lugar de `ad-service` también sirve un OpenLDAP real con el mismo LDIF:
-```bash
+# Active Directory: OpenLDAP con los usuarios del LDIF
 docker run -d --name ad -p 389:389 -p 636:636 -e LDAP_ORGANISATION=SSO -e LDAP_DOMAIN=sso.local -e LDAP_ADMIN_PASSWORD=admin osixia/openldap:1.5.0
 docker cp infra/ad/clientes.ldif ad:/tmp/clientes.ldif
 docker exec ad ldapadd -x -D "cn=admin,dc=sso,dc=local" -w admin -f /tmp/clientes.ldif
@@ -122,7 +113,6 @@ Si cambian las IP, edite el upstream de `infra/nginx/default.conf` y reinicie co
 
 ## Orden de arranque
 
-0. **Externos (opcional):** `correo-service.jar` y `gateway-sms.jar`, antes de `notificar-service` (ver Datos de prueba).
 1. **PC2:** RabbitMQ y AD (ya quedaron arriba) → `sso-monolito.jar` réplica 1 (crea las tablas de bd_sso) → correr `infra/postgres/02-semilla-bd_sso.sql` → réplica 2 en Docker (sección siguiente) → contenedores SIN y SEN (comandos de abajo) → `notificar-service.jar` → `YoPago.dll`.
 2. **PC1:** contenedor OFAC (sección siguiente) → `YoPago.Web.dll` → contenedor NGINX.
 
@@ -179,17 +169,10 @@ Dentro del SSO, el exchange `sso.eventos` lleva `compras.ofac`, `notif.correo`, 
 | En revisión | `revision` / `1234` | 8888 | ENPROCESO (prueba los reintentos) | 8888 / 1234 |
 | Reportado | `reportado` / `1234` | 9999 | RECHAZADO | — |
 
-Correos y SMS, tres formas:
+Correos y SMS, dos formas:
 
 1. **Sin nada más** (por defecto): salen en el log de `notificar-service` como `[CORREO SIMULADO]` y `[SMS SIMULADO]`.
-2. **Con los simuladores del diseño** (recomendado para la sustentación): arranque `correo-service` y `gateway-sms` y a `notificar-service` páselo así:
-   ```bash
-   java -jar correo-service.jar        # SMTP 587 (en Linux sin root: CORREO_PUERTO=2525) · buzón en :8095
-   java -jar gateway-sms.jar           # API en :8096
-   CORREO_SIMULADO=false SMTP_HOST=<ip del correo> SMTP_PORT=587 SMS_URL=http://<ip del gateway>:8096/api/sms java -jar notificar-service.jar
-   ```
-   El correo al ganador se ve en `http://<ip del correo>:8095/buzon/ana@correo.com`, con el enlace a Mis subastas. Cada SMS sale en el log de `gateway-sms` ("SMS entregado al celular …") y queda en `bd_sms` (consola en `:8096/h2-console`, URL `jdbc:h2:file:./datos/bd_sms`, usuario `sms`, clave `sms`).
-3. **De verdad:** `CORREO_SIMULADO=false` con `SMTP_HOST=smtp.gmail.com`, `SMTP_USER` y `SMTP_PASS` (clave de aplicación de Gmail), y `SMS_URL` / `SMS_API_KEY` con el API del proveedor.
+2. **De verdad:** `CORREO_SIMULADO=false` con `SMTP_HOST=smtp.gmail.com`, `SMTP_USER` y `SMTP_PASS` (clave de aplicación de Gmail), y `SMS_URL` / `SMS_API_KEY` con el API del proveedor.
 
 Sin el AD levantado se puede probar con `AD_HABILITADO=false` en `sso-monolito` (acepta cualquier clave de un cliente registrado). Úselo solo para desarrollo.
 
@@ -225,11 +208,7 @@ Para ver el balanceo, repita una petición con `curl -i`: la cabecera `X-Atendid
 El diseño usa HTTPS en la DMZ y LDAPS al AD. Por defecto el código arranca en HTTP/LDAP para que se pueda probar sin certificados.
 
 - NGINX escucha en el puerto 80 como en clase (L10 s8); para HTTPS se agrega `listen 443 ssl` con su certificado en `infra/nginx/default.conf`.
-- LDAPS: `ad-service` genera su certificado (`ad-ldaps.p12`, clave `AD_KEYSTORE_CLAVE`, por defecto `cambiar`) la primera vez que arranca. Expórtelo e impórtelo en el Java del monolito y arranque con `AD_URL=ldaps://192.168.1.102:636`:
-  ```bash
-  keytool -exportcert -rfc -alias ad -keystore ad-ldaps.p12 -storepass cambiar -file ad.crt
-  keytool -importcert -noprompt -alias ad-sso -file ad.crt -cacerts -storepass changeit
-  ```
+- LDAPS: OpenLDAP también atiende en 636. Para usarlo importe su certificado en el Java del monolito y arranque con `AD_URL=ldaps://192.168.1.102:636`.
 
 ## Cómo se cumplen las reglas del enunciado
 
@@ -243,7 +222,6 @@ El diseño usa HTTPS en la DMZ y LDAPS al AD. Por defecto el código arranca en 
 - **BD separadas:** bd_sso, bd_yopago, bd_ofac, bd_sin, bd_sen y bd_notificaciones. Ningún sistema se conecta a la BD de otro.
 - **A cada BD solo se llega por su repositorio (Repository = integrador de BD, L03):** en `sso-monolito` los `Srv` usan `RepoCliente`, `RepoSubasta`, `RepoCarrito`, `RepoOferta`, `RepoCompra`, `RepoPago` y `RepoAckCompra` (paquete `dominio.repo`); OFAC usa `RepoPersonaReportada`, `RepoSolicitudOFAC` y `RepoConsultaOFAC`; SIN usa `RepoVentaRecibida` y `RepoInventario`; SEN usa `RepoEnvio`; YoPago usa `IntegraBDUsuarioYP`, `IntegraBDCompraPendiente` e `IntegraBDPagoYP`, que son su repositorio sobre el DbContext de EF Core (N02).
 - **SIN, SEN y notificar-service:** cada `Listener` llama a su `SRB`. SIN y SEN llegan a su base por sus `Repo*`, y el ack a SSO sale por `IntegraAckSIN` / `IntegraAckSEN`. `notificar-service` sigue usando `IntegraBDNotificaciones`.
-- **Sistemas externos con su detalle:** AD, correo y gateway SMS siguen el mismo patrón entrada → SRB → integrador → BD: `ListenerLDAPS` → `SRBAutenticacionLDAP` → `IntegraDirectorio` → bd_directorio; `ListenerSMTP` → `SRBEntregarCorreo` → `IntegraBuzon` → bd_correo; `ListenerGatewaySMS` → `SRBDespacharSMS` (3 reintentos) → `IntegraOperadorMovil` → bd_sms.
 - **Web aislada:** PC1 es la DMZ; solo NGINX y `YoPago.Web` reciben tráfico de Internet y todo el negocio queda en PC2.
 
 ## Relación con el diseño
@@ -251,18 +229,10 @@ El diseño usa HTTPS en la DMZ y LDAPS al AD. Por defecto el código arranca en 
 El diseño (`SSO-Proyecto2-Grupo2.vpp`, 212 clases) y este código tienen las mismas clases y los mismos métodos: las 212 están programadas con los nombres del diagrama. `sso-monolito` va en 10 paquetes (`entrada`, `seguridad`, `catalogo`, `ofertas`, `subastas`, `compras`, `pagos`, `distribucion`, `notificacion`, `dominio`) y `YoPago.dll` en 5 (`Entrada`, `Autenticacion`, `Compras`, `Pagos`, `Datos`). Los `WS` son controladores y cada servidor recibe por su boundary `APIRest`. Detalles:
 
 - Las tres pantallas de YoPago (`PanLoginYoPago`, `PanComprasPendientes`, `PanPagarYoPago`) son vistas Razor en `yopago/YoPago.Web/Views/<Pan…>/`, no archivos `.cs`.
-- En el código hay, además, lo que cualquier aplicación necesita para arrancar y que el diagrama no dibuja: `AdApplication`, `CorreoApplication`, `GatewaySmsApplication` y el componente raíz `SSOWebSPA` (el nombre del componente del diagrama).
+- En el código hay, además, lo que cualquier aplicación necesita para arrancar y que el diagrama no dibuja: el componente raíz `SSOWebSPA` (el nombre del componente del diagrama).
 - `findById` y `save` de los repositorios los hereda Spring Data (`JpaRepository`).
 
 En los diagramas los pasos de cada historia van 1, 2, 3 en el SSO y los demás sistemas, y a, b, c dentro de YoPago.
-
-## Pruebas
-
-`mvn package` corre las pruebas de los simuladores, que usan los mismos clientes que el SSO:
-
-- `ad-service`: `LdapTemplate.authenticate` igual que `IntegraAD` (clave buena, clave mala y usuario inexistente) y bind por LDAPS.
-- `correo-service`: envío con JavaMail como `IntegraSMTP` (AUTH, HTML en UTF-8) y lectura del buzón.
-- `gateway-sms`: `POST {to, message}` como `IntegraGatewaySMS`, entrega, 3 reintentos con un celular inválido y API key equivocada.
 
 ## Lo que falta
 

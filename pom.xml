@@ -23,9 +23,6 @@
     <module>sin-service</module>
     <module>sen-service</module>
     <module>notificar-service</module>
-    <module>ad-service</module>
-    <module>correo-service</module>
-    <module>gateway-sms</module>
   </modules>
 
   <properties>
