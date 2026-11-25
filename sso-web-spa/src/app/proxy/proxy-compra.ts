@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { CompraDTO, PeticionCompraDTO, RespuestaCompraDTO } from '../dto';
 
-/** Llama a WSCompra por NGINX (PC1:80) y APIRestSSO. */
+/** Llama a WSCompra por NGINX (PC1:80). */
 @Injectable({ providedIn: 'root' })
 export class ProxyCompra {
 

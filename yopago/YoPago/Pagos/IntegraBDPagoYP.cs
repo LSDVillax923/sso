@@ -19,14 +19,4 @@ public class IntegraBDPagoYP
 
     public PagoYP? BuscarPorNumeroCompra(long numeroCompra) =>
         db.Pagos.Where(p => p.NumeroCompra == numeroCompra).OrderByDescending(p => p.Fecha).FirstOrDefault();
-
-    public List<PagoYP> BuscarNoNotificados() => db.Pagos.Where(p => !p.NotificadoSSO).ToList();
-
-    public void MarcarNotificado(long idPago)
-    {
-        var pago = db.Pagos.Find(idPago);
-        if (pago == null) return;
-        pago.NotificadoSSO = true;
-        db.SaveChanges();
-    }
 }

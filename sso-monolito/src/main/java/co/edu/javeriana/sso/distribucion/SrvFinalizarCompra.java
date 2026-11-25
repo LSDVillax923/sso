@@ -12,7 +12,6 @@ import co.edu.javeriana.sso.dominio.mensaje.PlantillaMensaje;
 import co.edu.javeriana.sso.notificacion.PublicadorEventos;
 import java.time.LocalDateTime;
 import java.util.Map;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,17 +21,13 @@ public class SrvFinalizarCompra {
 
     private final RepoAckCompra repoAckCompra;
     private final RepoCompra repoCompra;
-    private final SrvDistribuirCompra srvDistribuirCompra;
     private final PublicadorEventos publicadorEventos;
-    private final int esperaMin;
 
-    public SrvFinalizarCompra(RepoAckCompra repoAckCompra, RepoCompra repoCompra, SrvDistribuirCompra srvDistribuirCompra,
-                              PublicadorEventos publicadorEventos, @Value("${sso.ack.espera-min:10}") int esperaMin) {
+    public SrvFinalizarCompra(RepoAckCompra repoAckCompra, RepoCompra repoCompra,
+                              PublicadorEventos publicadorEventos) {
         this.repoAckCompra = repoAckCompra;
         this.repoCompra = repoCompra;
-        this.srvDistribuirCompra = srvDistribuirCompra;
         this.publicadorEventos = publicadorEventos;
-        this.esperaMin = esperaMin;
     }
 
     @Transactional
@@ -49,24 +44,6 @@ public class SrvFinalizarCompra {
             repoAckCompra.save(nuevo);
         }
         finalizarSiCompleta(compra);
-    }
-
-    @Transactional
-    public void revisarAckPendientes() {
-        LocalDateTime limite = LocalDateTime.now().minusMinutes(esperaMin);
-        for (Compra compra : repoCompra.findByEstadoAndFechaActualizacionBefore(EstadoCompra.DISTRIBUIDA, limite)) {
-            if (repoAckCompra.countByCompra(compra) >= SistemaDestino.values().length) {
-                finalizarSiCompleta(compra);
-                continue;
-            }
-            for (SistemaDestino sistema : SistemaDestino.values()) {
-                if (!repoAckCompra.existsByCompraAndSistema(compra, sistema)) {
-                    srvDistribuirCompra.reenviar(compra, sistema);
-                }
-            }
-            compra.setFechaActualizacion(LocalDateTime.now());
-            repoCompra.save(compra);
-        }
     }
 
     private void finalizarSiCompleta(Compra compra) {

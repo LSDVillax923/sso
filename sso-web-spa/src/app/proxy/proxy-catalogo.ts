@@ -3,7 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { BienDTO } from '../dto';
 
-/** Llama a WSCatalogo por NGINX (PC1:80) y APIRestSSO. */
+/** Llama a WSCatalogo por NGINX (PC1:80). */
 @Injectable({ providedIn: 'root' })
 export class ProxyCatalogo {
 

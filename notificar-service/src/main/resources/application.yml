@@ -5,14 +5,6 @@ server:
 spring:
   application:
     name: notificar-service
-  datasource:
-    url: ${BD_NOTIF_URL:jdbc:postgresql://192.168.1.102:5432/bd_notificaciones}
-    username: ${BD_NOTIF_USER:notif}
-    password: ${BD_NOTIF_PASS:notif}
-  jpa:
-    hibernate:
-      ddl-auto: update
-    open-in-view: false
   rabbitmq:
     host: ${RABBIT_HOST:192.168.1.102}
     port: 5672

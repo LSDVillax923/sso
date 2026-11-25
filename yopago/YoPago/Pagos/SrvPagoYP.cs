@@ -27,8 +27,7 @@ public class SrvPagoYP
             NumeroCompra = compra.NumeroCompra,
             Cedula = cedula,
             ValorPagado = compra.Valor,
-            Fecha = DateTime.Now,
-            NotificadoSSO = false
+            Fecha = DateTime.Now
         };
         integraBDPago.Agregar(pago);
         integraBDCompra.MarcarPagada(compra.NumeroCompra);
@@ -45,9 +44,6 @@ public class SrvPagoYP
 
     public void Publicar(PagoYP pago)
     {
-        if (publicador.PublicarConfirmado(new ConfirmacionPagoYPDTO(pago.Cedula, pago.NumeroCompra, pago.ValorPagado)))
-        {
-            integraBDPago.MarcarNotificado(pago.IdPago);
-        }
+        publicador.PublicarConfirmado(new ConfirmacionPagoYPDTO(pago.Cedula, pago.NumeroCompra, pago.ValorPagado));
     }
 }

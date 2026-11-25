@@ -11,7 +11,7 @@
   <groupId>co.edu.javeriana.notificar</groupId>
   <artifactId>notificar-service</artifactId>
   <name>notificar-service</name>
-  <description>Notificaciones del SSO: recibe los avisos por el MOM, los guarda en su propia base y los envía por correo o SMS</description>
+  <description>Notificaciones del SSO: recibe los avisos por el MOM y los envía por correo o SMS</description>
 
   <dependencies>
     <dependency>
@@ -24,10 +24,6 @@
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-data-jpa</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
     <dependency>
@@ -37,11 +33,6 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-mail</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
-      <scope>runtime</scope>
     </dependency>
   </dependencies>
 

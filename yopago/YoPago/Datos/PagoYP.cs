@@ -13,6 +13,4 @@ public class PagoYP
     public string Cedula { get; set; } = "";
     public decimal ValorPagado { get; set; }
     public DateTime Fecha { get; set; }
-    /** false mientras la confirmación no se haya publicado en el tópico; TimerReintentoNotificacion la reintenta. */
-    public bool NotificadoSSO { get; set; }
 }
